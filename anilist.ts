@@ -16,14 +16,17 @@ const limiter = new Bottleneck({
   minTime: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
 });
 
+export interface Rank {
+  title: string;
+  score: number;
+}
+
 /**
  * Given an anime title, return its average score on anilist.
  * @param title The title of the anime
  * @returns The average score, and the title on AniList. Returns undefined if it didn't find the show
  */
-export async function getRanking(
-  title: string,
-): Promise<{ title: string; score: number } | undefined> {
+export async function getRanking(title: string): Promise<Rank | undefined> {
   // TODO: ratelimits
   // https://docs.anilist.co/guide/rate-limiting
   // 30 req per minute = 1 req every 2 seconds
