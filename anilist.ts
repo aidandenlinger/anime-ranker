@@ -1,18 +1,35 @@
 import Bottleneck from "bottleneck";
 
+/**
+ * Anilist's MediaFormat type.
+ */
+type MediaFormat =
+  | "TV"
+  | "TV_SHORT"
+  | "MOVIE"
+  | "SPECIAL"
+  | "OVA"
+  | "ONA"
+  | "MUSIC"
+  | "MANGA"
+  | "NOVEL"
+  | "ONE_SHOT";
+
 interface SearchResp {
   data: {
     Media?: {
-      averageScore: number;
+      meanScore: number;
       title: {
         english: string;
       };
+      format: MediaFormat;
     };
   };
 }
 
+// https://docs.anilist.co/guide/rate-limiting
 const limiter = new Bottleneck({
-  maxConcurrent: 1, // to not overwhelm
+  maxConcurrent: 1, // To not overwhelm
   minTime: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
 });
 
@@ -24,18 +41,21 @@ export interface Rank {
 /**
  * Given an anime title, return its average score on anilist.
  * @param title The title of the anime
+ * @param allowMovies if this should allow movies, or only TV shows
  * @returns The average score, and the title on AniList. Returns undefined if it didn't find the show
  */
-export async function getRanking(title: string): Promise<Rank | undefined> {
-  // TODO: ratelimits
-  // https://docs.anilist.co/guide/rate-limiting
-  // 30 req per minute = 1 req every 2 seconds
-  const query = `query ExampleQuery($search: String) {
-    Media(search: $search) {
-      averageScore
+export async function getRanking(
+  title: string,
+  allowMovies = false,
+): Promise<Rank | undefined> {
+  // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
+  const query = `query getRanking($search: String) {
+    Media(search: $search, type: ANIME) {
+      meanScore
       title {
         english
       }
+      format
     }
   }
   `;
@@ -55,9 +75,19 @@ export async function getRanking(title: string): Promise<Rank | undefined> {
 
   const data = (await req.json()) as SearchResp;
 
-  const media = data.data.Media;
-  if (media) {
-    return { score: media.averageScore, title: media.title.english };
+  // For tv shows on streaming services, we only care about these three.
+  // SPECIALs and OVAs aren't broadcasted, so they aren't what we're looking for
+  // Everything else is non-anime
+  const allowedFormats: MediaFormat[] = ["TV", "TV_SHORT", "ONA"];
+  if (allowMovies) {
+    allowedFormats.push("MOVIE");
+  }
+
+  if (data.data.Media && allowedFormats.includes(data.data.Media.format)) {
+    return {
+      score: data.data.Media.meanScore,
+      title: data.data.Media.title.english,
+    };
   }
 
   return undefined;
