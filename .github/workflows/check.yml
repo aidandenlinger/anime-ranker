@@ -13,8 +13,6 @@ jobs:
 
       - name: Install pnpm/node
         uses: jdx/mise-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup pnpm cache
         uses: actions/setup-node@v4
