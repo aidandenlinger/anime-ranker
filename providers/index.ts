@@ -3,3 +3,4 @@ export interface Provider {
   getAnime(): Promise<string[]>;
 }
 export { Hulu } from "./hulu.ts";
+export { Netflix } from "./netflix.ts";

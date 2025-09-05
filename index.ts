@@ -1,13 +1,29 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { getRanking, type Rank } from "./anilist.ts";
 import type { Provider } from "./providers/index.ts";
-import { Hulu } from "./providers/index.ts";
+import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
 
 const providers: Provider[] = [new Hulu()];
 
+if (process.env.NETFLIX_COOKIES === undefined) {
+  console.warn("NETFLIX_COOKIES not defined, skipping Netflix...");
+} else {
+  providers.push(new Netflix(process.env.NETFLIX_COOKIES));
+}
+
 for (const provider of providers) {
-  const titles = await provider.getAnime();
+  console.log(`Querying ${provider.name}...`);
+  let titles;
+  try {
+    titles = await provider.getAnime();
+  } catch (e) {
+    if (e instanceof Error) {
+      console.warn(e.message);
+    }
+    console.warn(`Skipping ${provider.name} due to error...`);
+    continue;
+  }
 
   const toWatch = new Set<Rank>();
 

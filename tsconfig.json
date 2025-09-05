@@ -34,6 +34,10 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true
+    // additional recommended settings for running with node
+    // https://nodejs.org/docs/latest-v24.x/api/typescript.html#type-stripping
+    "noEmit": true, // Optional - see note below
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true
   }
 }
