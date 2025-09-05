@@ -25,19 +25,24 @@ for (const provider of providers) {
     continue;
   }
 
-  const toWatch = new Set<Rank>();
+  // I originally had a `Set<Rank>`, but turns out Javascript sets work on
+  // object instances, *not* object data. I still want to store my data as
+  // a `Rank` to keep the context of what the string and number are, so
+  // this set is solely to make sure `toWatch` doesn't have duplicates
+  const seenTitles = new Set<string>();
+  const toWatch: Rank[] = [];
 
   for (const title of titles) {
     const ranking = await getRanking(title);
-    if (ranking && ranking.score >= 80 && !toWatch.has(ranking)) {
+    if (ranking && ranking.score >= 80 && !seenTitles.has(ranking.title)) {
       console.log(`You should watch ${ranking.title} on ${provider.name}`);
-      toWatch.add(ranking);
+      seenTitles.add(ranking.title);
+      toWatch.push(ranking);
     }
   }
 
   // We're gonna sort by ranking, highest to lowest
-  const serialized = Array.from(toWatch);
-  serialized.sort((a, b) => b.score - a.score);
+  toWatch.sort((a, b) => b.score - a.score);
 
   const OUT_DIR = "out";
   const file = join(
@@ -45,6 +50,6 @@ for (const provider of providers) {
     `${provider.name}_${new Date().toISOString()}.json`,
   );
   await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(file, JSON.stringify(serialized, null, 2));
+  await writeFile(file, JSON.stringify(toWatch, null, 2));
   console.log(`Wrote results, sorted by score, to ${file}`);
 }
