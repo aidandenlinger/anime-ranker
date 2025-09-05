@@ -28,14 +28,14 @@ export class Netflix implements Provider {
    * Additional cookies are fine.
    * Required because we can't query the netflix API without it.
    */
-  private cookies: string;
+  #cookies: string;
 
   /**
    * @param cookies the `SecureNetflixId` and `NetflixId` cookies required to
    * query the Netflix API.
    */
   constructor(cookies: string) {
-    this.cookies = cookies;
+    this.#cookies = cookies;
   }
 
   /**
@@ -63,7 +63,7 @@ export class Netflix implements Provider {
 
       const attempt = await fetch(this.api, {
         headers: {
-          cookie: this.cookies,
+          cookie: this.#cookies,
         },
         body: params,
         method: "POST",
