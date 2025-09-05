@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file=.env index.ts",
-    "ci": "eslint . && prettier --check ."
+    "ci": "tsc && eslint && prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
