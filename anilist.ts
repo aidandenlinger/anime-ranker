@@ -18,7 +18,8 @@ type MediaFormat =
 interface SearchResp {
   data: {
     Media?: {
-      meanScore: number;
+      // https://anilist.co/forum/thread/2845 - averageScore is a weighted average accounting for number of people
+      averageScore: number;
       title: {
         english: string;
       };
@@ -51,7 +52,7 @@ export async function getRanking(
   // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
   const query = `query getRanking($search: String) {
     Media(search: $search, type: ANIME) {
-      meanScore
+      averageScore
       title {
         english
       }
@@ -85,7 +86,7 @@ export async function getRanking(
 
   if (data.data.Media && allowedFormats.includes(data.data.Media.format)) {
     return {
-      score: data.data.Media.meanScore,
+      score: data.data.Media.averageScore,
       title: data.data.Media.title.english,
     };
   }
