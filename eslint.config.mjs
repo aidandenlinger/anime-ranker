@@ -12,6 +12,22 @@ export default defineConfig(
   tseslint.configs.stylisticTypeChecked,
   jsdoc.configs["flat/recommended-typescript-error"],
   {
+    rules: {
+      // Force jsdocs on all relevant pieces of code
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            ClassDeclaration: true,
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+          },
+        },
+      ],
+    },
+  },
+  // Enable typechecked lints
+  {
     languageOptions: {
       parserOptions: {
         projectService: true,

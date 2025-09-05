@@ -1,16 +1,19 @@
 import * as cheerio from "cheerio";
 import type { Provider } from "./index.ts";
 
-const SRC = new URL("https://www.hulu.com/sitemap/genres/anime");
-
+/**
+ * Gets a list of all anime under Hulu's anime sitemap.
+ */
 export class Hulu implements Provider {
   name = "Hulu";
+
+  api = new URL("https://www.hulu.com/sitemap/genres/anime");
 
   /**
    * @returns a list of all anime on Hulu.
    */
   async getAnime(): Promise<string[]> {
-    const html = await fetch(SRC, {
+    const html = await fetch(this.api, {
       headers: { "User-Agent": "Anime-Ranker" },
     });
     if (!html.ok) {

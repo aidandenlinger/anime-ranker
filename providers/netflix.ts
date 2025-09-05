@@ -1,8 +1,5 @@
 import type { Provider } from "./index.ts";
 
-// great Netflix API resource - https://github.com/oldgalileo/shakti
-const API_URL = "https://www.netflix.com/shakti/mre/pathEvaluator";
-
 /**
  * Netflix's response. This is hardcoded to our specific request (requesting the
  * 7424 genre on "az").
@@ -17,8 +14,14 @@ interface Resp {
   };
 }
 
+/**
+ * Gets a list of all anime under Netflix's Anime genre (7424).
+ */
 export class Netflix implements Provider {
   name = "Netflix";
+
+  // great Netflix API resource - https://github.com/oldgalileo/shakti
+  api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
 
   /**
    * The `SecureNetflixId` and `NetflixId` of an active Netflix session.
@@ -27,6 +30,10 @@ export class Netflix implements Provider {
    */
   private cookies: string;
 
+  /**
+   * @param cookies the `SecureNetflixId` and `NetflixId` cookies required to
+   * query the Netflix API.
+   */
   constructor(cookies: string) {
     this.cookies = cookies;
   }
@@ -54,7 +61,7 @@ export class Netflix implements Provider {
         ]),
       });
 
-      const attempt = await fetch(API_URL, {
+      const attempt = await fetch(this.api, {
         headers: {
           cookie: this.cookies,
         },
