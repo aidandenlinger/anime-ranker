@@ -38,6 +38,8 @@
     // https://nodejs.org/docs/latest-v24.x/api/typescript.html#type-stripping
     "noEmit": true, // Optional - see note below
     "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    // Safer switch statements
+    "noFallthroughCasesInSwitch": true
   }
 }

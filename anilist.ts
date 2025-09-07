@@ -53,7 +53,7 @@ export interface Rank {
  */
 export async function getRanking(video: Video): Promise<Rank | undefined> {
   // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
-  const query = `query getRanking($search!: String, $format: MediaFormat) {
+  const query = `query getRanking($search: String!, $format: MediaFormat) {
     Media(search: $search, type: ANIME, format: $format) {
       averageScore
       title {
@@ -64,6 +64,23 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
     }
   }
   `;
+
+  let search: string;
+  switch (video.provider) {
+    case "Hulu": {
+      // Hulu specific filtering: they occasionally have two entries for sub vs dub.
+      // Strip the (Sub) and (Dub) part from the title so we can get an anilist search
+      const matches = /^(?:\(Sub\)|\(Dub\)) (?<title>.*)/.exec(
+        video.provider_title,
+      )?.groups;
+      search = matches?.title ?? video.provider_title;
+      break;
+    }
+    default: {
+      search = video.provider_title;
+      break;
+    }
+  }
 
   const req = await limiter.schedule(() =>
     fetch("https://graphql.anilist.co", {
@@ -76,7 +93,10 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
         // unfortunately, we can only provide *ONE* format. A tv series could be
         // TV, TV_SHORT, or ONA. So we only define format when we know it's a movie.
         variables: {
-          search: video.provider_title,
+          search,
+          // TODO: convert this request to a "MediaList" and search for the first
+          // one of appropriate type. No more multiple requests. Take the first one
+          // with an acceptable type.
           format: video.type === "MOVIE" ? "MOVIE" : undefined,
         },
       }),

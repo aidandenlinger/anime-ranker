@@ -24,6 +24,8 @@ export default defineConfig(
           },
         },
       ],
+      // I want my switch cases exhaustive
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
     },
   },
   // Enable typechecked lints
