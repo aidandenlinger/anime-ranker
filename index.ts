@@ -1,8 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { getRanking, type Rank } from "./anilist.ts";
-import type { Provider } from "./providers/index.ts";
+import type { Provider, Video } from "./providers/index.ts";
 import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
+
+type RankedVideo = Video & Rank & { lastUpdated: Date };
 
 const providers: Provider[] = [new Hulu()];
 
@@ -14,9 +16,9 @@ if (process.env.NETFLIX_COOKIES === undefined) {
 
 for (const provider of providers) {
   console.log(`Querying ${provider.name}...`);
-  let titles;
+  let videos;
   try {
-    titles = await provider.getAnime();
+    videos = await provider.getAnime();
   } catch (e) {
     if (e instanceof Error) {
       console.warn(e.message);
@@ -30,14 +32,24 @@ for (const provider of providers) {
   // a `Rank` to keep the context of what the string and number are, so
   // this set is solely to make sure `toWatch` doesn't have duplicates
   const seenTitles = new Set<string>();
-  const toWatch: Rank[] = [];
+  const toWatch: RankedVideo[] = [];
 
-  for (const title of titles) {
-    const ranking = await getRanking(title);
-    if (ranking && ranking.score >= 80 && !seenTitles.has(ranking.title)) {
-      console.log(`You should watch ${ranking.title} on ${provider.name}`);
-      seenTitles.add(ranking.title);
-      toWatch.push(ranking);
+  for (const video of videos) {
+    const ranking = await getRanking(video);
+    if (
+      ranking &&
+      ranking.score >= 80 &&
+      !seenTitles.has(ranking.anilist_title)
+    ) {
+      console.log(
+        `You should watch ${ranking.anilist_title} on ${provider.name}`,
+      );
+      seenTitles.add(ranking.anilist_title);
+      toWatch.push({
+        ...video,
+        ...ranking,
+        lastUpdated: new Date(),
+      });
     }
   }
 

@@ -1,4 +1,4 @@
-import type { Provider } from "./index.ts";
+import type { Provider, Video } from "./index.ts";
 
 /**
  * Netflix's response. This is hardcoded to our specific request (requesting the
@@ -8,11 +8,22 @@ interface Resp {
   value: {
     genres?: {
       "7424": {
-        az: Record<string, { itemSummary?: { title: string } }>;
+        az: Record<
+          string,
+          {
+            itemSummary?: {
+              title: string;
+              videoId: number;
+              type: "movie" | "show";
+            };
+          }
+        >;
       };
     };
   };
 }
+
+// URL: https://netflix.com/title/<title_id>
 
 /**
  * Gets a list of all anime under Netflix's Anime genre (7424).
@@ -42,22 +53,22 @@ export class Netflix implements Provider {
    * @returns a list of all anime in the Anime genre of Netflix
    * @throws if Netflix cookies are invalid
    */
-  async getAnime(): Promise<string[]> {
+  async getAnime(): Promise<Video[]> {
     // We request 48 titles at a time, to match with the webapp's behavior
     const CHUNK = 48;
 
     let iter = 0;
-    let titles: string[] = [];
+    let titles: Video[] = [];
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- infinite loop is intentional
     while (true) {
       // "7424" is the anime genre on netflix. it doesn't get *everything* (ie Den-noh Coil) but it gets the vast majority, which is good enough for me :)
       const params = new URLSearchParams({
         path: JSON.stringify([
           "genres",
-          7424,
-          "az",
+          7424, // Number of the anime genre
+          "az", // get titles from A-Z. alternatives: "su" (suggestions for you), "yr" (by year), "za" (backwards alphabetically)
           { from: iter * CHUNK + 1, to: (iter + 1) * CHUNK },
-          "itemSummary",
+          "itemSummary", // I tried replacing this to only get the title or id, but no luck. this works and is more than good enough
         ]),
       });
 
@@ -76,8 +87,22 @@ export class Netflix implements Provider {
       }
 
       const json = (await attempt.json()) as Resp;
-      const iterTitles = Object.values(json.value.genres?.[7424].az ?? {})
-        .map((v) => v.itemSummary?.title)
+      const iterTitles: Video[] = Object.values(
+        json.value.genres?.[7424].az ?? {},
+      )
+        .map((v) =>
+          v.itemSummary !== undefined
+            ? ({
+                provider_title: v.itemSummary.title,
+                provider_url: new URL(
+                  v.itemSummary.videoId.toString(),
+                  "https://netflix.com/title/",
+                ),
+                type: v.itemSummary.type === "show" ? "TV" : "MOVIE",
+                provider: this.name,
+              } satisfies Video)
+            : undefined,
+        )
         .filter((title) => title !== undefined);
 
       titles = titles.concat(iterTitles);
