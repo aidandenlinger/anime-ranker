@@ -5,7 +5,7 @@ import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
 
 // FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
-const DEBUG = true;
+const DEBUG = false;
 
 type RankedVideo = Video & Rank & { lastUpdated: Date };
 
