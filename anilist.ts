@@ -1,32 +1,50 @@
 import Bottleneck from "bottleneck";
 import type { Video } from "./providers/index.ts";
-import assert from "node:assert";
 
 /**
  * Anilist's MediaFormat type.
  */
 type MediaFormat =
+  /** Anime broadcast on television */
   | "TV"
+  /** Anime which are under 15 minutes in length and broadcast on television */
   | "TV_SHORT"
+  /** Anime movies with a theatrical release */
   | "MOVIE"
+  /** Special episodes that have been included in DVD/Bluray-releases, picture dramas, pilots, etc */
   | "SPECIAL"
+  /** (Original Video Animation) Anime that have been released directly on DVD/Blu-ray without originally going through a theatrical release or television broadcast */
   | "OVA"
+  /** (Original Net Animation) Anime that have been originally released online or are only available through streaming services */
   | "ONA"
+  /** (Not relevant) Short anime released as a music video */
   | "MUSIC"
+  // The rest are non visual and not relevant here
   | "MANGA"
   | "NOVEL"
   | "ONE_SHOT";
 
+/** Maps basic media types to a list of anilist MediaFormats. */
+const acceptedMediaFormats: Record<Video["type"], MediaFormat[]> = {
+  TV: ["TV", "TV_SHORT", "SPECIAL", "OVA", "ONA"] as const,
+  MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"] as const,
+} as const;
+
 interface SearchResp {
   data: {
-    Media?: {
-      // https://anilist.co/forum/thread/2845 - averageScore is a weighted average accounting for number of people
-      averageScore: number;
-      title: {
-        english: string;
-      };
-      format: MediaFormat;
-      siteUrl: string;
+    Page: {
+      media: [
+        {
+          // https://anilist.co/forum/thread/2845 - averageScore is a weighted average accounting for number of people
+          averageScore: number;
+          title: {
+            english?: string;
+            romaji: string;
+          };
+          format: MediaFormat;
+          siteUrl: string;
+        },
+      ];
     };
   };
 }
@@ -53,33 +71,41 @@ export interface Rank {
  */
 export async function getRanking(video: Video): Promise<Rank | undefined> {
   // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
-  const query = `query getRanking($search: String!, $format: MediaFormat) {
-    Media(search: $search, type: ANIME, format: $format) {
-      averageScore
-      title {
-        english
+  // We fetch 3 items to up our chances of finding the correct match. For example,
+  // "The Rose of Versailles" has an original TV show, *and* a movie. Rather than
+  // sending multiple requests to find the right format type, we can ask for 3 and
+  // use the first one that has an acceptable media type.
+  const query = `query getRanking($search: String!) {
+    Page(perPage: 3) {
+      media(search: $search, type: ANIME) {
+        averageScore
+        title {
+          english
+          romaji
+        }
+        format
+        siteUrl
       }
-      format
-      siteUrl
     }
   }
   `;
 
-  let search: string;
-  switch (video.provider) {
-    case "Hulu": {
-      // Hulu specific filtering: they occasionally have two entries for sub vs dub.
-      // Strip the (Sub) and (Dub) part from the title so we can get an anilist search
-      const matches = /^(?:\(Sub\)|\(Dub\)) (?<title>.*)/.exec(
-        video.provider_title,
-      )?.groups;
-      search = matches?.title ?? video.provider_title;
-      break;
-    }
-    default: {
-      search = video.provider_title;
-      break;
-    }
+  let search = video.provider_title;
+  // Anilist search doesn't like colons
+  // Try searching for "Frieren: Beyond Journey's End" and the actual anime is the third result if the colon is in it
+  search = search.replace(":", "");
+
+  if (video.provider === "Hulu") {
+    // Hulu specific filtering: they occasionally have two entries for sub vs dub, labelled in distinct ways
+    // strip these prefixes/suffixes as they mess with anilist search
+    // TODO: it'd be nice to track sub vs dub and kick this code out of the anilist area, it's just a pain with hulu since i'd need to visit each url for each show and determine some heuristics (are there episodes with sub or dub? does the *title* have sub or dub?) it's doable, just a pain, and managing the separate titles case sounds super annoying. it's doable though.
+    // Prefixes: (Sub) (Dub)
+    search = search.replace(/^\((?:Sub|Dub)\) /, "");
+    // Suffixes: (Spanish) (Eng) (Eng Dub) (English Dub) (Dub) (en Espanol)
+    search = search.replace(
+      / \((?:Spanish|Eng|Eng Dub|English Dub|Dub|en Español)\)$/,
+      "",
+    );
   }
 
   let req;
@@ -92,15 +118,7 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
         },
         body: JSON.stringify({
           query,
-          // unfortunately, we can only provide *ONE* format. A tv series could be
-          // TV, TV_SHORT, or ONA. So we only define format when we know it's a movie.
-          variables: {
-            search,
-            // TODO: convert this request to a "MediaList" and search for the first
-            // one of appropriate type. No more multiple requests. Take the first one
-            // with an acceptable type.
-            format: video.type === "MOVIE" ? "MOVIE" : undefined,
-          },
+          variables: { search },
         }),
       }),
     );
@@ -114,33 +132,17 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
 
   const data = (await req.json()) as SearchResp;
 
-  // Didn't get a matching result
-  if (!data.data.Media) {
-    console.warn(`Didn't get a result on anilist for ${video.provider_title}`);
-    return undefined;
+  const match = data.data.Page.media.find((anime) =>
+    acceptedMediaFormats[video.type].includes(anime.format),
+  );
+
+  if (match) {
+    return {
+      score: match.averageScore,
+      anilist_title: match.title.english ?? match.title.romaji,
+      anilist_url: new URL(match.siteUrl),
+    };
   }
 
-  switch (video.type) {
-    case "TV":
-      if (!["TV", "TV_SHORT", "ONA"].includes(data.data.Media.format)) {
-        // Basically, since we were querying on ANIME, this should *only* happen if we pull a movie instead of a TV show.
-        // We could requery on these three types, but I'll only do that when I run this and actually hit this issue.
-        console.warn(
-          `Queried on ${video.provider_title}, expected a TV show, got ${data.data.Media.format} ${data.data.Media.title.english}. Skipping...`,
-        );
-        return undefined;
-      }
-      break;
-
-    case "MOVIE":
-      // We explictly queried for a MOVIE on anilist, so this state should never occur.
-      assert.strictEqual(data.data.Media.format, "MOVIE");
-      break;
-  }
-
-  return {
-    score: data.data.Media.averageScore,
-    anilist_title: data.data.Media.title.english,
-    anilist_url: new URL(data.data.Media.siteUrl),
-  };
+  return undefined;
 }
