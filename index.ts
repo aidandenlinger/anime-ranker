@@ -34,13 +34,16 @@ for (const provider of providers) {
   const seenTitles = new Set<string>();
   const toWatch: RankedVideo[] = [];
 
+  const noMatch: Video[] = [];
+
   for (const video of videos) {
     const ranking = await getRanking(video);
-    if (
-      ranking &&
-      ranking.score >= 80 &&
-      !seenTitles.has(ranking.anilist_title)
-    ) {
+    if (!ranking) {
+      noMatch.push(video);
+      continue;
+    }
+
+    if (ranking.score >= 80 && !seenTitles.has(ranking.anilist_title)) {
       console.log(
         `You should watch ${ranking.anilist_title} on ${provider.name}`,
       );
@@ -51,6 +54,12 @@ for (const provider of providers) {
         lastUpdated: new Date(),
       });
     }
+  }
+
+  if (noMatch.length > 0) {
+    console.log(
+      `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.provider_title))}`,
+    );
   }
 
   // We're gonna sort by ranking, highest to lowest
