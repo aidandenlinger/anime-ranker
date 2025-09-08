@@ -25,12 +25,14 @@ type MediaFormat =
   | "ONE_SHOT";
 
 /** Maps basic media types to a list of anilist MediaFormats. */
-const acceptedMediaFormats: Record<Video["type"], MediaFormat[]> = {
-  TV: ["TV", "TV_SHORT", "SPECIAL", "OVA", "ONA"] as const,
-  MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"] as const,
-} as const;
+const acceptedMediaFormats: Readonly<
+  Record<Video["type"], readonly MediaFormat[]>
+> = {
+  TV: ["TV", "TV_SHORT", "SPECIAL", "OVA", "ONA"],
+  MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"],
+};
 
-interface SearchResp {
+type SearchResp = Readonly<{
   data: {
     Page: {
       media: [
@@ -47,7 +49,7 @@ interface SearchResp {
       ];
     };
   };
-}
+}>;
 
 // https://docs.anilist.co/guide/rate-limiting
 const limiter = new Bottleneck({
@@ -58,11 +60,11 @@ const limiter = new Bottleneck({
 /**
  * The ranking of an anime on anilist.
  */
-export interface Rank {
+export type Rank = Readonly<{
   anilist_title: string;
   anilist_url: URL;
   score: number;
-}
+}>;
 
 /**
  * Given an anime title, return its average score on anilist.

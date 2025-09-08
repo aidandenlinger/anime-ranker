@@ -4,7 +4,7 @@ import type { Provider, Video } from "./index.ts";
  * Netflix's response. This is hardcoded to our specific request (requesting the
  * 7424 genre on "az").
  */
-interface Resp {
+type Resp = Readonly<{
   value: {
     genres?: {
       "7424": {
@@ -21,15 +21,15 @@ interface Resp {
       };
     };
   };
-}
+}>;
 
 // URL: https://netflix.com/title/<title_id>
 
 /** Cookies required to authenticate to Netflix. Must be associated with an active session. */
-export interface NetflixCookies {
+export type NetflixCookies = Readonly<{
   SecureNetflixId: string;
   NetflixId: string;
-}
+}>;
 
 /**
  * Gets a list of all anime under Netflix's Anime genre (7424).
@@ -43,7 +43,7 @@ export class Netflix implements Provider {
   /**
    * The `SecureNetflixId` and `NetflixId` of an active Netflix session.
    */
-  #cookies: NetflixCookies;
+  readonly #cookies: NetflixCookies;
 
   /**
    * @param cookies the `SecureNetflixId` and `NetflixId` cookies required to
