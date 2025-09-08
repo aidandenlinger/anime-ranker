@@ -4,6 +4,9 @@ import type { Provider, Video } from "./providers/index.ts";
 import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
 
+// FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
+const DEBUG = true;
+
 type RankedVideo = Video & Rank & { lastUpdated: Date };
 
 const providers: Provider[] = [new Hulu()];
@@ -32,6 +35,22 @@ for (const provider of providers) {
     continue;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DEBUG
+  if (DEBUG) {
+    // FIXME
+    // shuffle the array
+    for (let i = videos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const i_val = videos[i];
+      const j_val = videos[j];
+      if (i_val && j_val) {
+        [videos[i], videos[j]] = [j_val, i_val];
+      }
+    }
+    // Only take 10% (but at least 1 element)
+    videos = videos.slice(0, Math.max(1, videos.length * 0.1));
+  }
+
   // I originally had a `Set<Rank>`, but turns out Javascript sets work on
   // object instances, *not* object data. I still want to store my data as
   // a `Rank` to keep the context of what the string and number are, so
@@ -51,6 +70,18 @@ for (const provider of providers) {
     if (ranking.score >= 80 && !seenTitles.has(ranking.anilist_title)) {
       console.log(
         `You should watch ${ranking.anilist_title} on ${provider.name}`,
+      );
+      seenTitles.add(ranking.anilist_title);
+      toWatch.push({
+        ...video,
+        ...ranking,
+        lastUpdated: new Date(),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DEBUG
+    } else if (DEBUG) {
+      // FIXME
+      console.log(
+        `Skipping ${ranking.anilist_title} as score is ${ranking.score.toString()}`,
       );
       seenTitles.add(ranking.anilist_title);
       toWatch.push({
