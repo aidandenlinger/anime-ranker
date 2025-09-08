@@ -82,26 +82,35 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
     }
   }
 
-  const req = await limiter.schedule(() =>
-    fetch("https://graphql.anilist.co", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        // unfortunately, we can only provide *ONE* format. A tv series could be
-        // TV, TV_SHORT, or ONA. So we only define format when we know it's a movie.
-        variables: {
-          search,
-          // TODO: convert this request to a "MediaList" and search for the first
-          // one of appropriate type. No more multiple requests. Take the first one
-          // with an acceptable type.
-          format: video.type === "MOVIE" ? "MOVIE" : undefined,
+  let req;
+  do {
+    req = await limiter.schedule(() =>
+      fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          query,
+          // unfortunately, we can only provide *ONE* format. A tv series could be
+          // TV, TV_SHORT, or ONA. So we only define format when we know it's a movie.
+          variables: {
+            search,
+            // TODO: convert this request to a "MediaList" and search for the first
+            // one of appropriate type. No more multiple requests. Take the first one
+            // with an acceptable type.
+            format: video.type === "MOVIE" ? "MOVIE" : undefined,
+          },
+        }),
       }),
-    }),
-  );
+    );
+
+    if (!req.ok) {
+      const sleep_sec = Number(req.headers.get("Retry-After") ?? "2");
+      console.log(`Rate limited, sleeping for ${sleep_sec.toString()} seconds`);
+      await new Promise((f) => setTimeout(f, sleep_sec * 1000));
+    }
+  } while (!req.ok);
 
   const data = (await req.json()) as SearchResp;
 
