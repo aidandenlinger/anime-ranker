@@ -25,6 +25,12 @@ interface Resp {
 
 // URL: https://netflix.com/title/<title_id>
 
+/** Cookies required to authenticate to Netflix. Must be associated with an active session. */
+export interface NetflixCookies {
+  SecureNetflixId: string;
+  NetflixId: string;
+}
+
 /**
  * Gets a list of all anime under Netflix's Anime genre (7424).
  */
@@ -36,16 +42,14 @@ export class Netflix implements Provider {
 
   /**
    * The `SecureNetflixId` and `NetflixId` of an active Netflix session.
-   * Additional cookies are fine.
-   * Required because we can't query the netflix API without it.
    */
-  #cookies: string;
+  #cookies: NetflixCookies;
 
   /**
    * @param cookies the `SecureNetflixId` and `NetflixId` cookies required to
    * query the Netflix API.
    */
-  constructor(cookies: string) {
+  constructor(cookies: NetflixCookies) {
     this.#cookies = cookies;
   }
 
@@ -74,7 +78,9 @@ export class Netflix implements Provider {
 
       const attempt = await fetch(this.api, {
         headers: {
-          cookie: this.#cookies,
+          cookie: Object.entries(this.#cookies)
+            .map(([key, value]: [string, string]) => key + "=" + value)
+            .join(";"),
         },
         body: params,
         method: "POST",

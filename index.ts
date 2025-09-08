@@ -8,10 +8,15 @@ type RankedVideo = Video & Rank & { lastUpdated: Date };
 
 const providers: Provider[] = [new Hulu()];
 
-if (process.env.NETFLIX_COOKIES === undefined) {
-  console.warn("NETFLIX_COOKIES not defined, skipping Netflix...");
+if (process.env.SECURENETFLIXID && process.env.NETFLIXID) {
+  providers.push(
+    new Netflix({
+      SecureNetflixId: process.env.SECURENETFLIXID,
+      NetflixId: process.env.NETFLIXID,
+    }),
+  );
 } else {
-  providers.push(new Netflix(process.env.NETFLIX_COOKIES));
+  console.warn("SECURENETFLIXID or NETFLIXID not defined, skipping Netflix...");
 }
 
 for (const provider of providers) {
@@ -60,6 +65,11 @@ for (const provider of providers) {
     console.log(
       `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.provider_title))}`,
     );
+    if (provider.name === "Netflix") {
+      console.log(
+        "Please note that Netflix labels a lot of content as 'Anime' when it isn't considered as such by Anilist.",
+      );
+    }
   }
 
   // We're gonna sort by ranking, highest to lowest
