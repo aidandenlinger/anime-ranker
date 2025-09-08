@@ -29,7 +29,7 @@ interface Resp {
  * Gets a list of all anime under Netflix's Anime genre (7424).
  */
 export class Netflix implements Provider {
-  name = "Netflix";
+  name: Provider["name"] = "Netflix";
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
   api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");

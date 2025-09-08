@@ -3,7 +3,7 @@
  */
 export interface Provider {
   /** A user-friendly name of the provider. */
-  name: string;
+  name: "Hulu" | "Netflix";
   /** The URL used to access the provider's data. */
   api: URL;
   /** A function to retrieve all anime titles from the provider. */
@@ -21,7 +21,7 @@ export interface Video {
   /* How to access the show on the provider. */
   provider_url: URL;
   /* The provider this show is on. */
-  provider: string;
+  provider: Provider["name"];
 }
 
 export { Hulu } from "./hulu.ts";

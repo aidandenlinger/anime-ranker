@@ -5,7 +5,7 @@ import type { Provider, Video } from "./index.ts";
  * Gets a list of all anime under Hulu's anime sitemap.
  */
 export class Hulu implements Provider {
-  name = "Hulu";
+  name: Provider["name"] = "Hulu";
 
   api = new URL("https://www.hulu.com/sitemap/genres/anime");
 
