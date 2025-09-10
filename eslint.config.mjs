@@ -22,6 +22,13 @@ export default defineConfig(
             FunctionDeclaration: true,
             MethodDefinition: true,
           },
+          // Also force on Typescript types/interfaces/properties
+          contexts: [
+            "TSTypeAliasDeclaratin",
+            "TSInterfaceDeclaration",
+            "TSMethodSignature",
+            "TSPropertySignature",
+          ],
         },
       ],
       // I want my switch cases exhaustive

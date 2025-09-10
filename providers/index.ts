@@ -14,13 +14,13 @@ export type Provider = Readonly<{
  * A video on a streaming service.
  */
 export type Video = Readonly<{
-  /* The tile of the show on the provider. */
+  /** The tile of the show on the provider. */
   provider_title: string;
-  /* If it is a TV show or a movie. */
+  /** If it is a TV show or a movie. */
   type: "TV" | "MOVIE";
-  /* How to access the show on the provider. */
+  /** How to access the show on the provider. */
   provider_url: URL;
-  /* The provider this show is on. */
+  /** The provider this show is on. */
   provider: Provider["name"];
 }>;
 

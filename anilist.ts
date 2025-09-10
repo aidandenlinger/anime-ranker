@@ -32,6 +32,7 @@ const acceptedMediaFormats: Readonly<
   MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"],
 };
 
+/* eslint-disable jsdoc/require-jsdoc -- foreign input, going to replace this datatype with zod */
 type SearchResp = Readonly<{
   data: {
     Page: {
@@ -40,8 +41,7 @@ type SearchResp = Readonly<{
           // https://anilist.co/forum/thread/2845 - averageScore is a weighted average accounting for number of people
           averageScore: number;
           title: {
-            english?: string;
-            romaji: string;
+            english: string;
           };
           format: MediaFormat;
           siteUrl: string;
@@ -50,6 +50,8 @@ type SearchResp = Readonly<{
     };
   };
 }>;
+
+/* eslint-enable jsdoc/require-jsdoc */
 
 // https://docs.anilist.co/guide/rate-limiting
 const limiter = new Bottleneck({
@@ -61,8 +63,16 @@ const limiter = new Bottleneck({
  * The ranking of an anime on anilist.
  */
 export type Rank = Readonly<{
+  /** English title of the show on anilist. */
   anilist_title: string;
+  /** URL to the show on anilist. */
   anilist_url: URL;
+  /**
+   * The average score of the show on anilist - a weighted average out of
+   * 100, accounting for the number of people who reviewed it. See
+   * {@link https://anilist.co/forum/thread/2845|this thread} for info on how the
+   * average score is determined.
+   */
   score: number;
 }>;
 
@@ -83,7 +93,6 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
         averageScore
         title {
           english
-          romaji
         }
         format
         siteUrl
@@ -141,7 +150,7 @@ export async function getRanking(video: Video): Promise<Rank | undefined> {
   if (match) {
     return {
       score: match.averageScore,
-      anilist_title: match.title.english ?? match.title.romaji,
+      anilist_title: match.title.english,
       anilist_url: new URL(match.siteUrl),
     };
   }

@@ -1,5 +1,6 @@
 import type { Provider, Video } from "./index.ts";
 
+/* eslint-disable jsdoc/require-jsdoc -- foreign input, going to replace this datatype with zod */
 /**
  * Netflix's response. This is hardcoded to our specific request (requesting the
  * 7424 genre on "az").
@@ -22,12 +23,13 @@ type Resp = Readonly<{
     };
   };
 }>;
-
-// URL: https://netflix.com/title/<title_id>
+/* eslint-enable jsdoc/require-jsdoc */
 
 /** Cookies required to authenticate to Netflix. Must be associated with an active session. */
 export type NetflixCookies = Readonly<{
+  /** A required cookie to authorize with Netflix. */
   SecureNetflixId: string;
+  /** A required cookie to authorize with Netflix. */
   NetflixId: string;
 }>;
 

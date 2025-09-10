@@ -7,7 +7,14 @@ import { join } from "node:path";
 // FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
 const DEBUG = false;
 
-type RankedVideo = Readonly<Video & Rank & { lastUpdated: Date }>;
+/** A video with its ranking and all associated information. The final output of this script. */
+type RankedVideo = Readonly<
+  Video &
+    Rank & {
+      /** The time this ranking was compiled. */
+      lastUpdated: Date;
+    }
+>;
 
 const providers: Provider[] = [new Hulu()];
 
