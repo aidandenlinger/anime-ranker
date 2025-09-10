@@ -1,5 +1,7 @@
 import * as cheerio from "cheerio";
-import type { Provider, Video } from "./index.ts";
+import * as z from "zod";
+
+import type { Provider, Video } from "./provider.ts";
 
 /**
  * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
@@ -26,35 +28,38 @@ export class Hulu implements Provider {
       .children()
       .map((_, el) => {
         const selector = $(el).children().first();
-        const provider_title = selector.attr("title");
-        if (!provider_title) {
-          console.warn("No title");
-          return undefined;
-        }
 
-        const href = selector.attr("href");
-        if (!href) {
-          console.warn("No href");
-          return undefined;
-        }
+        const parsed = z
+          .object({
+            provider_title: z.string(),
+            provider_url: z.codec(z.string(), z.instanceof(URL), {
+              decode: (href) => new URL(href, "https://hulu.com"),
+              encode: (value) => value.pathname,
+            }),
+          })
+          .readonly()
+          .parse({
+            provider_title: selector.attr("title"),
+            provider_url: selector.attr("href"),
+          });
 
-        const provider_url = new URL(href, "https://hulu.com");
         // We don't need the referrer
-        provider_url.searchParams.delete("lp_referrer");
+        parsed.provider_url.searchParams.delete("lp_referrer");
 
         let type: Video["type"];
-        if (provider_url.pathname.startsWith("/movie")) {
+        if (parsed.provider_url.pathname.startsWith("/movie")) {
           type = "MOVIE";
-        } else if (provider_url.pathname.startsWith("/series")) {
+        } else if (parsed.provider_url.pathname.startsWith("/series")) {
           type = "TV";
         } else {
-          console.warn(`Unexpected url path ${provider_url.pathname}`);
+          console.warn(
+            `Unexpected url path ${parsed.provider_url.pathname} doesn't start with '/movie' or '/series'`,
+          );
           return undefined;
         }
 
         return {
-          provider_title,
-          provider_url,
+          ...parsed,
           type,
           provider: this.name,
         } satisfies Video;

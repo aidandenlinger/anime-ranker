@@ -1,8 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { Anilist, type Rank } from "./rankers/index.ts";
-import type { Provider, Video } from "./providers/index.ts";
-import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
+import * as z from "zod";
+
+import { Hulu, Netflix, type Provider, type Video } from "./providers/index.ts";
+import { Anilist, type Rank } from "./rankers/index.ts";
 
 // FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
 const DEBUG = false;
@@ -18,15 +19,22 @@ type RankedVideo = Readonly<
 
 const providers: Provider[] = [new Hulu()];
 
-if (process.env.SECURENETFLIXID && process.env.NETFLIXID) {
-  providers.push(
-    new Netflix({
-      SecureNetflixId: process.env.SECURENETFLIXID,
-      NetflixId: process.env.NETFLIXID,
-    }),
-  );
-} else {
-  console.warn("SECURENETFLIXID or NETFLIXID not defined, skipping Netflix...");
+{
+  const netflixCookies = z
+    .object({
+      SecureNetflixId: z.string(),
+      NetflixId: z.string(),
+    })
+    .readonly()
+    .safeParse(process.env);
+
+  if (netflixCookies.success) {
+    providers.push(new Netflix(netflixCookies.data));
+  } else {
+    console.warn(
+      "SECURENETFLIXID or NETFLIXID not defined, skipping Netflix...",
+    );
+  }
 }
 
 for (const provider of providers) {

@@ -1,29 +1,38 @@
 import Bottleneck from "bottleneck";
+import * as z from "zod";
+import assert from "node:assert";
+
+import type { Rank, Ranker } from "./ranker.ts";
 import type { Video } from "../providers/index.ts";
-import type { Rank, Ranker } from "./index.ts";
 
 /**
  * Anilist's MediaFormat type.
  */
-type MediaFormat =
+const anilistMediaFormat = [
   /** Anime broadcast on television */
-  | "TV"
+  "TV",
   /** Anime which are under 15 minutes in length and broadcast on television */
-  | "TV_SHORT"
+  "TV_SHORT",
   /** Anime movies with a theatrical release */
-  | "MOVIE"
+  "MOVIE",
   /** Special episodes that have been included in DVD/Bluray-releases, picture dramas, pilots, etc */
-  | "SPECIAL"
+  "SPECIAL",
   /** (Original Video Animation) Anime that have been released directly on DVD/Blu-ray without originally going through a theatrical release or television broadcast */
-  | "OVA"
+  "OVA",
   /** (Original Net Animation) Anime that have been originally released online or are only available through streaming services */
-  | "ONA"
+  "ONA",
   /** (Not relevant) Short anime released as a music video */
-  | "MUSIC"
+  "MUSIC",
   // The rest are non visual and not relevant here
-  | "MANGA"
-  | "NOVEL"
-  | "ONE_SHOT";
+  "MANGA",
+  "NOVEL",
+  "ONE_SHOT",
+] as const;
+
+/**
+ * Anilist's MediaFormat type.
+ */
+type MediaFormat = (typeof anilistMediaFormat)[number];
 
 /** Maps basic media types to a list of anilist MediaFormats. */
 const acceptedMediaFormats: Readonly<
@@ -33,27 +42,31 @@ const acceptedMediaFormats: Readonly<
   MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"],
 };
 
-/* eslint-disable jsdoc/require-jsdoc -- foreign input, going to replace this datatype with zod */
-type SearchResp = Readonly<{
-  data: {
-    Page: {
-      media: [
-        {
-          // https://anilist.co/forum/thread/2845 - averageScore is a weighted average accounting for number of people
-          averageScore: number;
-          title: {
-            english?: string;
-            romaji: string;
-          };
-          format: MediaFormat;
-          siteUrl: string;
-        },
-      ];
-    };
-  };
-}>;
-
-/* eslint-enable jsdoc/require-jsdoc */
+/** Anilist's response to our query. */
+const AnilistResp = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        media: z.array(
+          z.object({
+            // null if it's a new show without enough ratings
+            averageScore: z.nullable(z.number()),
+            title: z.object({
+              english: z.nullable(z.string()),
+              romaji: z.string(),
+            }),
+            // null if it's a new show with undetermined format
+            format: z.nullable(z.literal(anilistMediaFormat)),
+            siteUrl: z.codec(z.httpUrl(), z.instanceof(URL), {
+              decode: (url) => new URL(url),
+              encode: (url) => url.href,
+            }),
+          }),
+        ),
+      }),
+    }),
+  })
+  .readonly();
 
 // https://docs.anilist.co/guide/rate-limiting
 const limiter = new Bottleneck({
@@ -137,20 +150,34 @@ export class Anilist implements Ranker {
       }
     } while (!req.ok);
 
-    const data = (await req.json()) as SearchResp;
+    const json = await req.json();
+    const data = AnilistResp.safeParse(json);
 
-    const match = data.data.Page.media.find((anime) =>
-      acceptedMediaFormats[video.type].includes(anime.format),
+    if (!data.success) {
+      console.log(`Error parsing data, skipping show: ${JSON.stringify(json)}`);
+      console.log(data.error);
+      return undefined;
+    }
+
+    const match = data.data.data.Page.media.find(
+      (anime) =>
+        // These nulls are possible when the show hasn't been released yet
+        anime.averageScore !== null &&
+        anime.format !== null &&
+        acceptedMediaFormats[video.type].includes(anime.format),
     );
 
     if (!match) {
       return undefined;
     }
 
+    // This is impossible because it's a part of our find condition, but typescript doesn't pick up on it
+    assert(match.averageScore !== null);
+
     return {
       score: match.averageScore,
       ranker_title: match.title.english ?? match.title.romaji,
-      ranker_url: new URL(match.siteUrl),
+      ranker_url: match.siteUrl,
       ranker: this.name,
     };
   }

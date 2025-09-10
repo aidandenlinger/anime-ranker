@@ -1,29 +1,52 @@
-import type { Provider, Video } from "./index.ts";
+import * as z from "zod";
 
-/* eslint-disable jsdoc/require-jsdoc -- foreign input, going to replace this datatype with zod */
+import { videoType, type Provider, type Video } from "./provider.ts";
+
 /**
  * Netflix's response. This is hardcoded to our specific request (requesting the
- * 7424 genre on "az").
+ * 7424 genre over "az").
  */
-type Resp = Readonly<{
-  value: {
-    genres?: {
-      "7424": {
-        az: Record<
-          string,
-          {
-            itemSummary?: {
-              title: string;
-              videoId: number;
-              type: "movie" | "show";
-            };
-          }
-        >;
-      };
-    };
-  };
-}>;
-/* eslint-enable jsdoc/require-jsdoc */
+const NetflixResp = z
+  .object({
+    value: z.object({
+      genres: z.object({
+        "7424": z.object({
+          az: z.record(
+            z.string(),
+            z.object({
+              itemSummary: z.object({
+                title: z.string(),
+                videoId: z.number(),
+                type: z.codec(
+                  z.literal(["movie", "show"]),
+                  z.literal(videoType),
+                  {
+                    decode: (type) => {
+                      switch (type) {
+                        case "movie":
+                          return "MOVIE";
+                        case "show":
+                          return "TV";
+                      }
+                    },
+                    encode: (type) => {
+                      switch (type) {
+                        case "TV":
+                          return "show";
+                        case "MOVIE":
+                          return "movie";
+                      }
+                    },
+                  },
+                ),
+              }),
+            }),
+          ),
+        }),
+      }),
+    }),
+  })
+  .readonly();
 
 /** Cookies required to authenticate to Netflix. Must be associated with an active session. */
 export type NetflixCookies = Readonly<{
@@ -96,22 +119,16 @@ export class Netflix implements Provider {
         );
       }
 
-      const json = (await attempt.json()) as Resp;
-      iterTitles = Object.values(json.value.genres?.[7424].az ?? {})
-        .map((v) =>
-          v.itemSummary !== undefined
-            ? ({
-                provider_title: v.itemSummary.title,
-                provider_url: new URL(
-                  v.itemSummary.videoId.toString(),
-                  "https://netflix.com/title/",
-                ),
-                type: v.itemSummary.type === "show" ? "TV" : "MOVIE",
-                provider: this.name,
-              } satisfies Video)
-            : undefined,
-        )
-        .filter((title) => title !== undefined);
+      const json = NetflixResp.parse(await attempt.json());
+      iterTitles = Object.values(json.value.genres["7424"].az).map((v) => ({
+        provider_title: v.itemSummary.title,
+        provider_url: new URL(
+          v.itemSummary.videoId.toString(),
+          "https://netflix.com/title/",
+        ),
+        type: v.itemSummary.type,
+        provider: this.name,
+      }));
 
       titles = titles.concat(iterTitles);
 
