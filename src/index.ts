@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { getRanking, type Rank } from "./anilist.ts";
+import { Anilist, type Rank } from "./rankers/index.ts";
 import type { Provider, Video } from "./providers/index.ts";
 import { Hulu, Netflix } from "./providers/index.ts";
 import { join } from "node:path";
@@ -67,18 +67,23 @@ for (const provider of providers) {
 
   const noMatch: Video[] = [];
 
+  // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
+  // the future
+
+  const ranker = new Anilist();
+
   for (const video of videos) {
-    const ranking = await getRanking(video);
+    const ranking = await ranker.getRanking(video);
     if (!ranking) {
       noMatch.push(video);
       continue;
     }
 
-    if (ranking.score >= 80 && !seenTitles.has(ranking.anilist_title)) {
+    if (ranking.score >= 80 && !seenTitles.has(ranking.ranker_title)) {
       console.log(
-        `You should watch ${ranking.anilist_title} on ${provider.name}`,
+        `You should watch ${ranking.ranker_title} on ${provider.name}`,
       );
-      seenTitles.add(ranking.anilist_title);
+      seenTitles.add(ranking.ranker_title);
       toWatch.push({
         ...video,
         ...ranking,
@@ -88,9 +93,9 @@ for (const provider of providers) {
     } else if (DEBUG) {
       // FIXME
       console.log(
-        `Skipping ${ranking.anilist_title} as score is ${ranking.score.toString()}`,
+        `Skipping ${ranking.ranker_title} as score is ${ranking.score.toString()}`,
       );
-      seenTitles.add(ranking.anilist_title);
+      seenTitles.add(ranking.ranker_title);
       toWatch.push({
         ...video,
         ...ranking,
@@ -113,7 +118,7 @@ for (const provider of providers) {
   // We're gonna sort by ranking, highest to lowest
   toWatch.sort((a, b) => b.score - a.score);
 
-  const OUT_DIR = "out";
+  const OUT_DIR = join(import.meta.dirname, "..", "out");
   const file = join(
     OUT_DIR,
     `${provider.name}_${new Date().toISOString()}.json`,

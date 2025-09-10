@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { Provider, Video } from "./index.ts";
 
 /**
- * Gets a list of all anime under Hulu's anime sitemap.
+ * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
  */
 export class Hulu implements Provider {
   name: Provider["name"] = "Hulu";

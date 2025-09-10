@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env index.ts",
+    "start": "node --env-file=.env src/index.ts",
     "ci": "tsc && eslint && prettier --check ."
   },
   "devDependencies": {

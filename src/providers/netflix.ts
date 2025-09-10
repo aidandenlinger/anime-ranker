@@ -34,7 +34,7 @@ export type NetflixCookies = Readonly<{
 }>;
 
 /**
- * Gets a list of all anime under Netflix's Anime genre (7424).
+ * Gets a list of all anime under {@link https://netflix.com|Netflix's} Anime genre (7424).
  */
 export class Netflix implements Provider {
   name: Provider["name"] = "Netflix";

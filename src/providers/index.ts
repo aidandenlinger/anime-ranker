@@ -6,7 +6,7 @@ export type Provider = Readonly<{
   name: "Hulu" | "Netflix";
   /** The URL used to access the provider's data. */
   api: URL;
-  /** A function to retrieve all anime titles from the provider. */
+  /** @returns all anime titles from the provider. */
   getAnime(): Promise<Video[]>;
 }>;
 
