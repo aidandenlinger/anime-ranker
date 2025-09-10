@@ -65,8 +65,10 @@ export class Netflix implements Provider {
 
     let iter = 0;
     let titles: Video[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- infinite loop is intentional
-    while (true) {
+
+    // titles from *this* iteration. needs to be defined out of the block so we can use it in the while condition
+    let iterTitles: Video[];
+    do {
       // "7424" is the anime genre on netflix. it doesn't get *everything* (ie Den-noh Coil) but it gets the vast majority, which is good enough for me :)
       const params = new URLSearchParams({
         path: JSON.stringify([
@@ -95,9 +97,7 @@ export class Netflix implements Provider {
       }
 
       const json = (await attempt.json()) as Resp;
-      const iterTitles: Video[] = Object.values(
-        json.value.genres?.[7424].az ?? {},
-      )
+      iterTitles = Object.values(json.value.genres?.[7424].az ?? {})
         .map((v) =>
           v.itemSummary !== undefined
             ? ({
@@ -116,12 +116,7 @@ export class Netflix implements Provider {
       titles = titles.concat(iterTitles);
 
       iter += 1;
-
-      // Once we don't get a full chunk of titles, we're at the end of the list
-      if (iterTitles.length !== CHUNK) {
-        break;
-      }
-    }
+    } while (iterTitles.length === CHUNK); // Once we don't receive a full chunk of videos, we're at the end of the list
 
     return titles;
   }
