@@ -1,4 +1,5 @@
 import * as z from "zod";
+import Bottleneck from "bottleneck";
 
 import { videoType, type Provider, type Video } from "./provider.ts";
 
@@ -56,6 +57,14 @@ export type NetflixCookies = Readonly<{
   NetflixId: string;
 }>;
 
+// The Netflix API isn't public, so there's no public rate limiting mechanism.
+// We want to be friendly as possible to avoid any issues, so we only make one
+// request per second.
+const limiter = new Bottleneck({
+  maxConcurrent: 1, // don't request again until we've gotten an answer.
+  minTime: 1000, // one request per second. This is an arbitrary, friendly value.
+});
+
 /**
  * Gets a list of all anime under {@link https://netflix.com|Netflix's} Anime genre (7424).
  */
@@ -103,15 +112,17 @@ export class Netflix implements Provider {
         ]),
       });
 
-      const attempt = await fetch(this.api, {
-        headers: {
-          cookie: Object.entries(this.#cookies)
-            .map(([key, value]: [string, string]) => key + "=" + value)
-            .join(";"),
-        },
-        body: params,
-        method: "POST",
-      });
+      const attempt = await limiter.schedule(() =>
+        fetch(this.api, {
+          headers: {
+            cookie: Object.entries(this.#cookies)
+              .map(([key, value]: [string, string]) => key + "=" + value)
+              .join(";"),
+          },
+          body: params,
+          method: "POST",
+        }),
+      );
 
       if (!attempt.ok) {
         throw new Error(
