@@ -1,5 +1,5 @@
 import * as z from "zod";
-import Bottleneck from "bottleneck";
+import pThrottle from "p-throttle";
 
 import { videoType, type Provider, type Video } from "./provider.ts";
 
@@ -60,9 +60,9 @@ export type NetflixCookies = Readonly<{
 // The Netflix API isn't public, so there's no public rate limiting mechanism.
 // We want to be friendly as possible to avoid any issues, so we only make one
 // request per second.
-const limiter = new Bottleneck({
-  maxConcurrent: 1, // don't request again until we've gotten an answer.
-  minTime: 1000, // one request per second. This is an arbitrary, friendly value.
+const throttle = pThrottle({
+  limit: 1, // don't request again until we've gotten an answer.
+  interval: 1000, // one request per second. This is an arbitrary, friendly value.
 });
 
 /**
@@ -98,29 +98,36 @@ export class Netflix implements Provider {
     let iter = 0;
     let titles: Video[] = [];
 
+    const throttledReq = throttle(async (params: URLSearchParams) =>
+      fetch(this.api, {
+        headers: {
+          cookie: Object.entries(this.#cookies)
+            .map(([key, value]: [string, string]) => key + "=" + value)
+            .join(";"),
+        },
+        body: params,
+        method: "POST",
+      }),
+    );
+
     // titles from *this* iteration. needs to be defined out of the block so we can use it in the while condition
     let iterTitles: Video[];
     do {
-      // "7424" is the anime genre on netflix. it doesn't get *everything* (ie Den-noh Coil) but it gets the vast majority, which is good enough for me :)
-      const params = new URLSearchParams({
-        path: JSON.stringify([
-          "genres",
-          7424, // Number of the anime genre
-          "az", // get titles from A-Z. alternatives: "su" (suggestions for you), "yr" (by year), "za" (backwards alphabetically)
-          { from: iter * CHUNK + 1, to: (iter + 1) * CHUNK },
-          "itemSummary", // I tried replacing this to only get the title or id, but no luck. this works and is more than good enough
-        ]),
-      });
-
-      const attempt = await limiter.schedule(() =>
-        fetch(this.api, {
-          headers: {
-            cookie: Object.entries(this.#cookies)
-              .map(([key, value]: [string, string]) => key + "=" + value)
-              .join(";"),
-          },
-          body: params,
-          method: "POST",
+      const attempt = await throttledReq(
+        new URLSearchParams({
+          path: JSON.stringify([
+            "genres",
+            // "7424" is the anime genre on netflix. it doesn't get *everything*
+            // (ie Den-noh Coil) but it gets the vast majority, which is good enough for me :)
+            7424,
+            // get titles from A-Z. alternatives: "su" (suggestions for you),
+            // "yr" (by year), "za" (backwards alphabetically)
+            "az",
+            { from: iter * CHUNK + 1, to: (iter + 1) * CHUNK },
+            // Get a summary about each item, with lots of info
+            // I tried replacing this to only get the title or id, but no luck.
+            "itemSummary",
+          ]),
         }),
       );
 

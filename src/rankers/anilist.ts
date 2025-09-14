@@ -1,4 +1,4 @@
-import Bottleneck from "bottleneck";
+import pThrottle from "p-throttle";
 import * as z from "zod";
 import assert from "node:assert";
 
@@ -69,9 +69,9 @@ const AnilistResp = z
   .readonly();
 
 // https://docs.anilist.co/guide/rate-limiting
-const limiter = new Bottleneck({
-  maxConcurrent: 1, // To not overwhelm
-  minTime: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
+const throttled = pThrottle({
+  limit: 1, // To not overwhelm
+  interval: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
 });
 
 /**
@@ -126,20 +126,22 @@ export class Anilist implements Ranker {
       );
     }
 
+    const throttledReq = throttled(() =>
+      fetch(this.api, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: this.#graphql_query,
+          variables: { search },
+        }),
+      }),
+    );
+
     let req;
     do {
-      req = await limiter.schedule(() =>
-        fetch(this.api, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: this.#graphql_query,
-            variables: { search },
-          }),
-        }),
-      );
+      req = await throttledReq();
 
       if (!req.ok) {
         const sleep_sec = Number(req.headers.get("Retry-After") ?? "2");
