@@ -1,0 +1,6 @@
+# To reduce the risk of installing compromised packages, you can delay the
+# installation of newly published versions. In most cases, malicious releases
+# are discovered and removed from the registry within an hour. The following
+# setting ensures that only packages released at least one day ago can be
+# installed.
+minimumReleaseAge: 1440
