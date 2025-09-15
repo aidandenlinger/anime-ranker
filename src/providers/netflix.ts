@@ -88,7 +88,7 @@ export class Netflix implements Provider {
 
   /**
    * @returns a list of all anime in the Anime genre of Netflix
-   * @throws if Netflix cookies are invalid
+   * @throws {Error} if Netflix cookies are invalid
    */
   async getAnime(): Promise<Video[]> {
     // We request 48 titles at a time, to match with the webapp's behavior
