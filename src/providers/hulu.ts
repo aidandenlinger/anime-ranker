@@ -1,6 +1,5 @@
 import * as cheerio from "cheerio";
 import * as z from "zod";
-
 import type { Provider, Video } from "./provider.ts";
 
 /**

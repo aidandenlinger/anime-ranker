@@ -1,7 +1,6 @@
 import * as z from "zod";
+import { type Provider, type Video, videoType } from "./provider.ts";
 import pThrottle from "p-throttle";
-
-import { videoType, type Provider, type Video } from "./provider.ts";
 
 /**
  * Netflix's response. This is hardcoded to our specific request (requesting the

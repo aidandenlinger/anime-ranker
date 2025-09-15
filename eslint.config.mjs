@@ -33,6 +33,9 @@ export default defineConfig(
       ],
       // I want my switch cases exhaustive
       "@typescript-eslint/switch-exhaustiveness-check": "error",
+      // Keep imports consistent.
+      // I don't love the settings and lack of autofixing, but something is better than nothing :shrug:
+      "sort-imports": "error",
     },
   },
   // Enable typechecked lints

@@ -1,9 +1,8 @@
-import pThrottle from "p-throttle";
 import * as z from "zod";
-import assert from "node:assert";
-
 import type { Rank, Ranker } from "./ranker.ts";
 import type { Video } from "../providers/index.ts";
+import assert from "node:assert";
+import pThrottle from "p-throttle";
 
 /**
  * Anilist's MediaFormat type.
