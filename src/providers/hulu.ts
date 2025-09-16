@@ -25,8 +25,8 @@ export class Hulu implements Provider {
 
     const titles = $("div .ListCardItem")
       .children()
-      .map((_, el) => {
-        const selector = $(el).children().first();
+      .map((_, element) => {
+        const selector = $(element).children().first();
 
         const parsed = z
           .object({
@@ -54,7 +54,7 @@ export class Hulu implements Provider {
           console.warn(
             `Unexpected url path ${parsed.provider_url.pathname} doesn't start with '/movie' or '/series'`,
           );
-          return undefined;
+          return;
         }
 
         return {

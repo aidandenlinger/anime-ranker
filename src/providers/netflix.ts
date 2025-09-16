@@ -23,18 +23,22 @@ const NetflixResp = z
                   {
                     decode: (type) => {
                       switch (type) {
-                        case "movie":
+                        case "movie": {
                           return "MOVIE";
-                        case "show":
+                        }
+                        case "show": {
                           return "TV";
+                        }
                       }
                     },
                     encode: (type) => {
                       switch (type) {
-                        case "TV":
+                        case "TV": {
                           return "show";
-                        case "MOVIE":
+                        }
+                        case "MOVIE": {
                           return "movie";
+                        }
                       }
                     },
                   },
@@ -97,14 +101,14 @@ export class Netflix implements Provider {
     let iter = 0;
     let titles: Video[] = [];
 
-    const throttledReq = throttle(async (params: URLSearchParams) =>
+    const throttledRequest = throttle(async (parameters: URLSearchParams) =>
       fetch(this.api, {
         headers: {
           cookie: Object.entries(this.#cookies)
             .map(([key, value]: [string, string]) => key + "=" + value)
             .join(";"),
         },
-        body: params,
+        body: parameters,
         method: "POST",
       }),
     );
@@ -112,7 +116,7 @@ export class Netflix implements Provider {
     // titles from *this* iteration. needs to be defined out of the block so we can use it in the while condition
     let iterTitles: Video[];
     do {
-      const attempt = await throttledReq(
+      const attempt = await throttledRequest(
         new URLSearchParams({
           path: JSON.stringify([
             "genres",
@@ -147,7 +151,7 @@ export class Netflix implements Provider {
         provider: this.name,
       }));
 
-      titles = titles.concat(iterTitles);
+      titles = [...titles, ...iterTitles];
 
       iter += 1;
     } while (iterTitles.length === CHUNK); // Once we don't receive a full chunk of videos, we're at the end of the list

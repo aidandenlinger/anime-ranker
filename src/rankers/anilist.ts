@@ -1,6 +1,6 @@
 import type { Rank, Ranker } from "./ranker.ts";
 import type { Video } from "../providers/provider.ts";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import pThrottle from "p-throttle";
 import z from "zod";
 
@@ -125,7 +125,7 @@ export class Anilist implements Ranker {
       );
     }
 
-    const throttledReq = throttled(() =>
+    const throttledRequest = throttled(() =>
       fetch(this.api, {
         method: "POST",
         headers: {
@@ -138,20 +138,20 @@ export class Anilist implements Ranker {
       }),
     );
 
-    let req;
+    let request;
     do {
-      req = await throttledReq();
+      request = await throttledRequest();
 
-      if (!req.ok) {
-        const sleep_sec = Number(req.headers.get("Retry-After") ?? "2");
+      if (!request.ok) {
+        const sleep_sec = Number(request.headers.get("Retry-After") ?? "2");
         console.log(
           `Rate limited, sleeping for ${sleep_sec.toString()} seconds`,
         );
         await new Promise((f) => setTimeout(f, sleep_sec * 1000));
       }
-    } while (!req.ok);
+    } while (!request.ok);
 
-    const json = await req.json();
+    const json = await request.json();
     const data = AnilistResp.safeParse(json);
 
     if (!data.success) {
@@ -173,7 +173,7 @@ export class Anilist implements Ranker {
     }
 
     // This is impossible because it's a part of our find condition, but typescript doesn't pick up on it
-    assert(match.averageScore !== null);
+    assert.ok(match.averageScore !== null);
 
     return {
       score: match.averageScore,

@@ -4,7 +4,7 @@ import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
 import { Netflix } from "./providers/netflix.ts";
 import type { Rank } from "./rankers/ranker.ts";
-import { join } from "node:path";
+import path from "node:path";
 import z from "zod";
 
 // FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
@@ -44,9 +44,9 @@ for (const provider of providers) {
   let videos;
   try {
     videos = await provider.getAnime();
-  } catch (e) {
-    if (e instanceof Error) {
-      console.warn(e.message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.warn(error.message);
     }
     console.warn(`Skipping ${provider.name} due to error...`);
     continue;
@@ -56,12 +56,12 @@ for (const provider of providers) {
   if (DEBUG) {
     // FIXME
     // shuffle the array
-    for (let i = videos.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const i_val = videos[i];
-      const j_val = videos[j];
-      if (i_val && j_val) {
-        [videos[i], videos[j]] = [j_val, i_val];
+    for (let a_index = videos.length - 1; a_index > 0; a_index--) {
+      const b_index = Math.floor(Math.random() * (a_index + 1));
+      const a_value = videos[a_index];
+      const b_value = videos[b_index];
+      if (a_value && b_value) {
+        [videos[a_index], videos[b_index]] = [b_value, a_value];
       }
     }
     // Only take 10% (but at least 1 element)
@@ -128,12 +128,12 @@ for (const provider of providers) {
   // We're gonna sort by ranking, highest to lowest
   toWatch.sort((a, b) => b.score - a.score);
 
-  const OUT_DIR = join(import.meta.dirname, "..", "out");
-  const file = join(
+  const OUT_DIR = path.join(import.meta.dirname, "..", "out");
+  const file = path.join(
     OUT_DIR,
     `${provider.name}_${new Date().toISOString()}.json`,
   );
   await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(file, JSON.stringify(toWatch, null, 2));
+  await writeFile(file, JSON.stringify(toWatch, undefined, 2));
   console.log(`Wrote results, sorted by score, to ${file}`);
 }
