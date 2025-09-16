@@ -1,6 +1,6 @@
-import * as cheerio from "cheerio";
-import * as z from "zod";
 import type { Provider, Video } from "./provider.ts";
+import { load as cheerioLoad } from "cheerio";
+import z from "zod";
 
 /**
  * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
@@ -21,7 +21,7 @@ export class Hulu implements Provider {
       throw new Error("HTML request is not okay");
     }
     const text = await html.text();
-    const $ = cheerio.load(text);
+    const $ = cheerioLoad(text);
 
     const titles = $("div .ListCardItem")
       .children()
