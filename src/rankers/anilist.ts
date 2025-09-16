@@ -155,9 +155,12 @@ export class Anilist implements Ranker {
     const data = AnilistResp.safeParse(json);
 
     if (!data.success) {
-      console.log(`Error parsing data, skipping show: ${JSON.stringify(json)}`);
-      console.log(data.error);
-      return undefined;
+      console.warn(
+        `[Anilist] Error parsing data, skipping ${video.provider_title}`,
+      );
+      console.warn(`Received data: ${JSON.stringify(json, undefined, 2)}`);
+      console.warn("Error:\n", z.prettifyError(data.error));
+      return;
     }
 
     const match = data.data.data.Page.media.find(
@@ -169,7 +172,7 @@ export class Anilist implements Ranker {
     );
 
     if (!match) {
-      return undefined;
+      return;
     }
 
     // This is impossible because it's a part of our find condition, but typescript doesn't pick up on it

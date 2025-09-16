@@ -12,13 +12,16 @@ export class Hulu implements Provider {
 
   /**
    * @returns a list of all anime on Hulu.
+   * @throws {Error} if HTML request fails
    */
   async getAnime(): Promise<Video[]> {
     const html = await fetch(this.api, {
       headers: { "User-Agent": "Anime-Ranker" },
     });
     if (!html.ok) {
-      throw new Error("HTML request is not okay");
+      throw new Error(
+        `[Hulu] Request not okay: ${html.status.toString()} ${html.statusText}`,
+      );
     }
     const text = await html.text();
     const $ = cheerioLoad(text);

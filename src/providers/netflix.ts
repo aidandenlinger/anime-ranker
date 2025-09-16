@@ -92,7 +92,7 @@ export class Netflix implements Provider {
 
   /**
    * @returns a list of all anime in the Anime genre of Netflix
-   * @throws {Error} if Netflix cookies are invalid
+   * @throws {Error} if Netflix request does not succeed (often because cookies are invalid)
    */
   async getAnime(): Promise<Video[]> {
     // We request 48 titles at a time, to match with the webapp's behavior
@@ -136,7 +136,7 @@ export class Netflix implements Provider {
 
       if (!attempt.ok) {
         throw new Error(
-          `Netflix request not okay: ${attempt.status.toString()} ${attempt.statusText} ${attempt.status === 401 ? "(Are your cookies valid?)" : ""}`,
+          `[Netflix] Request not okay: ${attempt.status.toString()} ${attempt.statusText} ${attempt.status === 401 ? "(Are your cookies valid?)" : ""}`,
         );
       }
 

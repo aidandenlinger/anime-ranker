@@ -33,9 +33,8 @@ const providers: Provider[] = [new Hulu()];
   if (netflixCookies.success) {
     providers.push(new Netflix(netflixCookies.data));
   } else {
-    console.warn(
-      "SECURENETFLIXID or NETFLIXID not defined, skipping Netflix...",
-    );
+    console.warn("Skipping Netflix as required env variables are not defined:");
+    console.warn(z.prettifyError(netflixCookies.error));
   }
 }
 
@@ -115,11 +114,11 @@ for (const provider of providers) {
   }
 
   if (noMatch.length > 0) {
-    console.log(
+    console.warn(
       `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.provider_title))}`,
     );
     if (provider.name === "Netflix") {
-      console.log(
+      console.warn(
         "Please note that Netflix labels a lot of content as 'Anime' when it isn't considered as such by Anilist.",
       );
     }
