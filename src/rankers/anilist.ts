@@ -49,13 +49,13 @@ const AnilistResp = z
         media: z.array(
           z.object({
             // null if it's a new show without enough ratings
-            averageScore: z.nullable(z.number()),
+            averageScore: z.number().nullable(),
             title: z.object({
-              english: z.nullable(z.string()),
+              english: z.string().nullable(),
               romaji: z.string(),
             }),
             // null if it's a new show with undetermined format
-            format: z.nullable(z.literal(anilistMediaFormat)),
+            format: z.literal(anilistMediaFormat).nullable(),
             siteUrl: z.codec(z.httpUrl(), z.instanceof(URL), {
               decode: (url) => new URL(url),
               encode: (url) => url.href,
