@@ -1,4 +1,4 @@
-import type { Video } from "../providers/index.ts";
+import type { Video } from "../providers/provider.ts";
 
 /**
  * A service that ranks a video.

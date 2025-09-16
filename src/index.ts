@@ -1,7 +1,10 @@
 import * as z from "zod";
-import { Anilist, type Rank } from "./rankers/index.ts";
-import { Hulu, Netflix, type Provider, type Video } from "./providers/index.ts";
+import type { Provider, Video } from "./providers/provider.ts";
 import { mkdir, writeFile } from "node:fs/promises";
+import { Anilist } from "./rankers/anilist.ts";
+import { Hulu } from "./providers/hulu.ts";
+import { Netflix } from "./providers/netflix.ts";
+import type { Rank } from "./rankers/ranker.ts";
 import { join } from "node:path";
 
 // FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows

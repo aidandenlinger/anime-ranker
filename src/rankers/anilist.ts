@@ -1,6 +1,6 @@
 import * as z from "zod";
 import type { Rank, Ranker } from "./ranker.ts";
-import type { Video } from "../providers/index.ts";
+import type { Video } from "../providers/provider.ts";
 import assert from "node:assert";
 import pThrottle from "p-throttle";
 
