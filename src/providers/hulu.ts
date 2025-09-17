@@ -1,5 +1,5 @@
 import type { Provider, Video } from "./provider.ts";
-import { load as cheerioLoad } from "cheerio";
+import { fromURL } from "cheerio";
 import z from "zod";
 
 /**
@@ -15,16 +15,18 @@ export class Hulu implements Provider {
    * @throws {Error} if HTML request fails
    */
   async getAnime(): Promise<Video[]> {
-    const html = await fetch(this.api, {
-      headers: { "User-Agent": "Anime-Ranker" },
-    });
-    if (!html.ok) {
-      throw new Error(
-        `[Hulu] Request not okay: ${html.status.toString()} ${html.statusText}`,
-      );
+    let $;
+    try {
+      $ = await fromURL(this.api, {
+        requestOptions: {
+          method: "GET",
+          // I've had the request get rejected when it has the default user agent
+          headers: { "User-Agent": "Anime-Ranker" },
+        },
+      });
+    } catch (error) {
+      throw new Error(`[Hulu] Request not okay: ${JSON.stringify(error)}}`);
     }
-    const text = await html.text();
-    const $ = cheerioLoad(text);
 
     const titles = $("div .ListCardItem")
       .children()
