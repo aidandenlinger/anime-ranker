@@ -28,8 +28,11 @@ export type Rank = Readonly<{
    * 100, accounting for the number of people who reviewed it. See
    * {@link https://anilist.co/forum/thread/2845|this thread} for info on how the
    * average score is determined.
+   *
+   * A score may be undefined - this is typically because the show is new and
+   * doesn't have a ranking yet.
    */
-  score: number;
+  score: number | undefined;
   /** Name of the ranker. */
   ranker: Ranker["name"];
 }>;

@@ -88,7 +88,11 @@ for (const provider of providers) {
       continue;
     }
 
-    if (ranking.score >= 80 && !seenTitles.has(ranking.ranker_title)) {
+    if (
+      ranking.score &&
+      ranking.score >= 80 &&
+      !seenTitles.has(ranking.ranker_title)
+    ) {
       console.log(
         `You should watch ${ranking.ranker_title} on ${provider.name}`,
       );
@@ -102,7 +106,7 @@ for (const provider of providers) {
     } else if (DEBUG) {
       // FIXME
       console.log(
-        `Skipping ${ranking.ranker_title} as score is ${ranking.score.toString()}`,
+        `Skipping ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
       );
       seenTitles.add(ranking.ranker_title);
       toWatch.push({
@@ -125,7 +129,8 @@ for (const provider of providers) {
   }
 
   // We're gonna sort by ranking, highest to lowest
-  toWatch.sort((a, b) => b.score - a.score);
+  // undefined -> Infinity, largest number, so end of list
+  toWatch.sort((a, b) => (b.score ?? Infinity) - (a.score ?? Infinity));
 
   const OUT_DIR = path.join(import.meta.dirname, "..", "out");
   const file = path.join(

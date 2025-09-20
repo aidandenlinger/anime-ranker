@@ -49,6 +49,20 @@ export default defineConfig(
       // Keep imports consistent.
       // I don't love the settings and lack of autofixing, but something is better than nothing :shrug:
       "sort-imports": "error",
+      /// I want to ignore this error for vars that start with _
+      // config from https://typescript-eslint.io/rules/no-unused-vars/#faqs
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "all",
+          argsIgnorePattern: "^_",
+          caughtErrors: "all",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   {
