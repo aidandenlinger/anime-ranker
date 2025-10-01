@@ -13,6 +13,7 @@ export class Hulu implements Provider {
   // - https://www.hulu.com/sitemap/genres/anime-tv
   // I'm sticking with the simple one-request-gets-both approach, but it's
   // good to have the option if I decide to refactor
+  // Another note - they maintain a list of what's being added/removed every month at https://press.hulu.com/schedule/
   api = new URL("https://www.hulu.com/sitemap/genres/anime");
 
   /**
