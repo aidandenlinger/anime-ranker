@@ -117,9 +117,13 @@ for (const provider of providers) {
     }
   }
 
-  // We're gonna sort by ranking, highest to lowest
+  // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
   // undefined -> Infinity, largest number, so end of list
-  toWatch.sort((a, b) => (b.score ?? Infinity) - (a.score ?? Infinity));
+  toWatch.sort(
+    (a, b) =>
+      (b.score ?? Infinity) - (a.score ?? Infinity) ||
+      a.provider_title.localeCompare(b.provider_title),
+  );
 
   const OUT_DIR = path.join(import.meta.dirname, "..", "out");
   const file = path.join(
