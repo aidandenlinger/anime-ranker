@@ -156,10 +156,7 @@ export class Anilist implements Ranker {
               }),
               // null if it's a new show with undetermined format
               format: z.literal(anilistMediaFormat).nullable(),
-              siteUrl: z.codec(z.httpUrl(), z.instanceof(URL), {
-                decode: (url) => new URL(url),
-                encode: (url) => url.href,
-              }),
+              siteUrl: z.httpUrl(),
             }),
           ),
         }),
@@ -172,7 +169,7 @@ export class Anilist implements Ranker {
         return {
           score: result.averageScore ?? undefined,
           ranker_title: result.title.english ?? result.title.romaji,
-          ranker_url: result.siteUrl,
+          ranker_url: new URL(result.siteUrl),
           ranker: this.name,
           format: result.format ?? undefined,
         };
