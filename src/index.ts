@@ -67,11 +67,6 @@ for (const provider of providers) {
     videos = videos.slice(0, Math.max(1, videos.length * 0.1));
   }
 
-  // I originally had a `Set<Rank>`, but turns out Javascript sets work on
-  // object instances, *not* object data. I still want to store my data as
-  // a `Rank` to keep the context of what the string and number are, so
-  // this set is solely to make sure `toWatch` doesn't have duplicates
-  const seenTitles = new Set<string>();
   const toWatch: RankedVideo[] = [];
 
   const noMatch: Video[] = [];
@@ -88,15 +83,10 @@ for (const provider of providers) {
       continue;
     }
 
-    if (
-      ranking.score &&
-      ranking.score >= 80 &&
-      !seenTitles.has(ranking.ranker_title)
-    ) {
+    if (ranking.score && ranking.score >= 80) {
       console.log(
         `You should watch ${ranking.ranker_title} on ${provider.name}`,
       );
-      seenTitles.add(ranking.ranker_title);
       toWatch.push({
         ...video,
         ...ranking,
@@ -108,7 +98,6 @@ for (const provider of providers) {
       console.log(
         `Skipping ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
       );
-      seenTitles.add(ranking.ranker_title);
       toWatch.push({
         ...video,
         ...ranking,
