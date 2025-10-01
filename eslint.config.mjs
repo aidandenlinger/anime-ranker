@@ -66,6 +66,21 @@ export default defineConfig(
     },
   },
   {
+    files: ["**/**.test.ts"],
+    rules: {
+      // https://github.com/nodejs/node/issues/51292#issuecomment-3151271587
+      // the node test suite issues dangling promises which the runner handles
+      "@typescript-eslint/no-floating-promises": [
+        "error",
+        {
+          allowForKnownSafeCalls: [
+            { from: "package", name: ["suite", "test"], package: "node:test" },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Enable typechecked lints
     languageOptions: {
       parserOptions: {

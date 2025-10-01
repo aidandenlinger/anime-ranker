@@ -1,6 +1,7 @@
 import type { Provider, Video } from "../providers/provider.ts";
 import type { Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
+import { title_similarity } from "./string-comp.ts";
 import z from "zod";
 
 /**
@@ -31,6 +32,7 @@ export class Anilist implements Ranker {
             english
             romaji
           }
+          synonyms
           format
           siteUrl
         }
@@ -44,27 +46,39 @@ export class Anilist implements Ranker {
    * @returns The average score, and the title on AniList. Returns undefined if it didn't find the show
    */
   async getRanking(video: Video) {
-    const title = this.#cleanTitle(video.provider_title, video.provider);
+    const cleaned_title = this.#cleanTitle(
+      video.provider_title,
+      video.provider,
+    );
 
-    const results = await this.#parsedRequest(title);
+    const results = await this.#parsedRequest(cleaned_title);
 
     // We need to find the first result that has our expected format. This
     // avoids problems with series that have TV shows *and* movies - we want to
     // make sure we get the correct one.
     const match = results.find(
       (anime) =>
-        // If format is undefined, this show hasn't aired yet and cannot be on a streaming service
+        // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
         anime.format !== undefined &&
-        acceptedMediaFormats[video.type].includes(anime.format),
+        // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
+        acceptedMediaFormats[video.type].includes(anime.format) &&
+        // Ensure that the titles anilist found are close enough to the provider title.
+        // Sometimes anilist returns some absolute nonmatches - see the title_similarity test cases for examples we're trying to reject
+        anime.possible_titles.some(
+          (anilist_title) =>
+            title_similarity(anilist_title, cleaned_title) == "similar",
+        ),
     );
 
     if (!match) {
       return;
     }
 
-    // Define "answer" as everything from match minus anilist's format field, which we don't want to return
-    // We only needed it to assert we found the correct show. Now we have, so strip that information
-    const { format: _, ...answer } = match;
+    // Define "answer" as everything from match minus
+    //   anilist's format field, we only needed it to assert we found the correct show
+    //   the possible titles, we don't need them anymore
+    const { format: _a, possible_titles: _b, ...answer } = match;
+
     return answer;
   }
 
@@ -154,6 +168,7 @@ export class Anilist implements Ranker {
                 english: z.string().nullable(),
                 romaji: z.string(),
               }),
+              synonyms: z.array(z.string()),
               // null if it's a new show with undetermined format
               format: z.literal(anilistMediaFormat).nullable(),
               siteUrl: z.httpUrl(),
@@ -169,6 +184,11 @@ export class Anilist implements Ranker {
         return {
           score: result.averageScore ?? undefined,
           ranker_title: result.title.english ?? result.title.romaji,
+          possible_titles: [
+            result.title.english ?? undefined,
+            result.title.romaji,
+            ...result.synonyms,
+          ].filter((a) => a !== undefined),
           ranker_url: new URL(result.siteUrl),
           ranker: this.name,
           format: result.format ?? undefined,
