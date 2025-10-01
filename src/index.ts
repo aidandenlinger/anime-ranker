@@ -1,8 +1,8 @@
+import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import type { Provider, Video } from "./providers/provider.ts";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
-import { Netflix } from "./providers/netflix.ts";
 import type { Rank } from "./rankers/ranker.ts";
 import path from "node:path";
 import z from "zod";
@@ -22,13 +22,7 @@ type RankedVideo = Readonly<
 const providers: Provider[] = [new Hulu()];
 
 {
-  const netflixCookies = z
-    .object({
-      SecureNetflixId: z.string(),
-      NetflixId: z.string(),
-    })
-    .readonly()
-    .safeParse(process.env);
+  const netflixCookies = netflixCookiesSchema.safeParse(process.env);
 
   if (netflixCookies.success) {
     providers.push(new Netflix(netflixCookies.data));

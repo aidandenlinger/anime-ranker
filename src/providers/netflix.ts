@@ -3,12 +3,15 @@ import pThrottle from "p-throttle";
 import z from "zod";
 
 /** Cookies required to authenticate to Netflix. Must be associated with an active session. */
-export type NetflixCookies = Readonly<{
-  /** A required cookie to authorize with Netflix. */
-  SecureNetflixId: string;
-  /** A required cookie to authorize with Netflix. */
-  NetflixId: string;
-}>;
+export const netflixCookiesSchema = z
+  .object({
+    SecureNetflixId: z.string(),
+    NetflixId: z.string(),
+  })
+  .readonly();
+
+/** Cookies required to authenticate to Netflix. Must be associated with an active session. */
+type NetflixCookies = z.infer<typeof netflixCookiesSchema>;
 
 /**
  * Gets a list of all anime under {@link https://netflix.com|Netflix's} Anime genre (7424).
