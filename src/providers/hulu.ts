@@ -52,7 +52,7 @@ export class Hulu implements Provider {
   /**
    * A parsed version of Hulu's site data.
    */
-  #HuluParsed = z
+  readonly #HuluParsed = z
     .object({
       title: z.string(),
       href: validHuluHref,

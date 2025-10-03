@@ -44,11 +44,23 @@ export default defineConfig(
   }),
   {
     rules: {
-      // I want my switch cases exhaustive
-      "@typescript-eslint/switch-exhaustiveness-check": "error",
       // Keep imports consistent.
       // I don't love the settings and lack of autofixing, but something is better than nothing :shrug:
       "sort-imports": "error",
+
+      // If it can be a readonly private variable, I'd prefer it to
+      "@typescript-eslint/prefer-readonly": "error",
+
+      // This is too strict for me, using third party libraries and URL types
+      // without a builtin "DeepReadonly" type in Typescript.
+      // It's also enforced on arrow functions which is really verbose for my usecase
+      // https://github.com/typescript-eslint/typescript-eslint/issues/3615
+      // I like it in principal, but it's more annoying than useful
+      // "@typescript-eslint/prefer-readonly-parameter-types": "error",
+
+      // I want my switch cases exhaustive
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+
       /// I want to ignore this error for vars that start with _
       // config from https://typescript-eslint.io/rules/no-unused-vars/#faqs
       "@typescript-eslint/no-unused-vars": [

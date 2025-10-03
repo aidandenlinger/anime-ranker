@@ -120,7 +120,7 @@ export class Netflix implements Provider {
    * Netflix's response. This is hardcoded to our specific request (requesting the
    * 7424 genre over "az").
    */
-  #NetflixResp = z
+  readonly #NetflixResp = z
     .object({
       value: z.object({
         genres: z.object({

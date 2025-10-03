@@ -21,10 +21,10 @@ export class Anilist implements Ranker {
    * for `this.#resultsPerSearch` and use the first one that has an acceptable
    * media type.
    */
-  #resultsPerSearch = 3 as const;
+  readonly #resultsPerSearch = 3;
 
   // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
-  #graphql_query = `query getRanking($search: String!) {
+  readonly #graphql_query = `query getRanking($search: String!) {
       Page(perPage: ${this.#resultsPerSearch.toString()}) {
         media(search: $search, type: ANIME) {
           averageScore
@@ -88,7 +88,7 @@ export class Anilist implements Ranker {
    * @param search The anime to search for
    * @returns A raw response with `this.#resultsPerSearch` anime matching the query
    */
-  #throttledRequest = pThrottle({
+  readonly #throttledRequest = pThrottle({
     limit: 1, // To not overwhelm
     interval: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
     // eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle
@@ -156,7 +156,7 @@ export class Anilist implements Ranker {
   }
 
   /** Anilist's response to our query. */
-  #AnilistResp = z
+  readonly #AnilistResp = z
     .object({
       data: z.object({
         Page: z.object({
