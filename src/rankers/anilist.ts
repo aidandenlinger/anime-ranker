@@ -1,4 +1,4 @@
-import type { Provider, Video } from "../providers/provider.ts";
+import type { Providers, Video } from "../providers/provider.ts";
 import type { Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
 import { title_similarity } from "./string-comp.ts";
@@ -134,7 +134,7 @@ export class Anilist implements Ranker {
    * @param provider The provider of the anime for specific filtering
    * @returns a title fit for searching with anilist
    */
-  #cleanTitle(title: string, provider: Provider["name"]) {
+  #cleanTitle(title: string, provider: Providers) {
     // Anilist search doesn't like colons
     // Try searching for "Frieren: Beyond Journey's End" and the actual anime is the third result if the colon is in it
     title = title.replace(":", "");

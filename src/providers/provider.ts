@@ -1,9 +1,19 @@
 /**
+ * An array of all supported providers, for access at runtime.
+ */
+export const providers = ["Hulu", "Netflix"] as const;
+
+/**
+ * All supported providers.
+ */
+export type Providers = (typeof providers)[number];
+
+/**
  * A streaming provider, and a way to get a list of anime on it.
  */
 export type Provider = Readonly<{
   /** A user-friendly name of the provider. */
-  name: "Hulu" | "Netflix";
+  name: Providers;
   /** The URL used to access the provider's data. */
   api: URL;
   /** @returns all anime titles from the provider. */
@@ -24,5 +34,5 @@ export type Video = Readonly<{
   /** How to access the show on the provider. */
   provider_url: URL;
   /** The provider this show is on. */
-  provider: Provider["name"];
+  provider: Providers;
 }>;

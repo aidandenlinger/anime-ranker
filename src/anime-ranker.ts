@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
 import type { Rank } from "./rankers/ranker.ts";
+import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
 import z from "zod";
 
@@ -19,16 +20,28 @@ type RankedVideo = Readonly<
     }
 >;
 
-const providers: Provider[] = [new Hulu()];
+const cliArguments = cliInterface.parse().opts();
 
-{
-  const netflixCookies = netflixCookiesSchema.safeParse(process.env);
+const providers: Provider[] = [];
 
-  if (netflixCookies.success) {
-    providers.push(new Netflix(netflixCookies.data));
-  } else {
-    console.warn("Skipping Netflix as required env variables are not defined:");
-    console.warn(z.prettifyError(netflixCookies.error));
+for (const provider of cliArguments.providers) {
+  switch (provider) {
+    case "Hulu": {
+      providers.push(new Hulu());
+      break;
+    }
+    case "Netflix": {
+      const netflixCookies = netflixCookiesSchema.safeParse(process.env);
+
+      if (netflixCookies.success) {
+        providers.push(new Netflix(netflixCookies.data));
+      } else {
+        console.warn(
+          "Skipping Netflix as required env variables are not defined:",
+        );
+        console.warn(z.prettifyError(netflixCookies.error));
+      }
+    }
   }
 }
 

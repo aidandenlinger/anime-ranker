@@ -1,4 +1,4 @@
-import { type Provider, type Video } from "./provider.ts";
+import { type Provider, type Providers, type Video } from "./provider.ts";
 import { fromURL } from "cheerio";
 import z from "zod";
 
@@ -6,7 +6,7 @@ import z from "zod";
  * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
  */
 export class Hulu implements Provider {
-  name: Provider["name"] = "Hulu";
+  name: Providers = "Hulu";
 
   // Of note - they actually have separate pages for TV and movies.
   // - https://www.hulu.com/sitemap/genres/anime-movies

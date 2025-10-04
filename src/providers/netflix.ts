@@ -1,4 +1,4 @@
-import { type Provider, type Video } from "./provider.ts";
+import { type Provider, type Providers, type Video } from "./provider.ts";
 import pThrottle from "p-throttle";
 import z from "zod";
 
@@ -17,7 +17,7 @@ type NetflixCookies = z.infer<typeof netflixCookiesSchema>;
  * Gets a list of all anime under {@link https://netflix.com|Netflix's} Anime genre (7424).
  */
 export class Netflix implements Provider {
-  name: Provider["name"] = "Netflix";
+  name: Providers = "Netflix";
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
   api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
