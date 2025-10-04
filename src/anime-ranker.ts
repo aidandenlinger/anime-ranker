@@ -6,10 +6,8 @@ import { Hulu } from "./providers/hulu.ts";
 import type { Rank } from "./rankers/ranker.ts";
 import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
+import shuffle from "knuth-shuffle-seeded";
 import z from "zod";
-
-// FIXME Temp to log every show regardless of score and to only query 10% of retrieved shows
-const DEBUG = false;
 
 /** A video with its ranking and all associated information. The final output of this script. */
 type RankedVideo = Readonly<
@@ -58,18 +56,15 @@ for (const provider of providers) {
     continue;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DEBUG
-  if (DEBUG) {
-    // FIXME
-    // shuffle the array
-    for (let a_index = videos.length - 1; a_index > 0; a_index--) {
-      const b_index = Math.floor(Math.random() * (a_index + 1));
-      const a_value = videos[a_index];
-      const b_value = videos[b_index];
-      if (a_value && b_value) {
-        [videos[a_index], videos[b_index]] = [b_value, a_value];
-      }
-    }
+  if (cliArguments.testLessTitles) {
+    const seed =
+      typeof cliArguments.testLessTitles === "number"
+        ? cliArguments.testLessTitles
+        : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+    console.log(`[--test-less-titles] Seed: ${seed.toString()}`);
+
+    videos = shuffle(videos, seed);
     // Only take 10% (but at least 1 element)
     videos = videos.slice(0, Math.max(1, videos.length * 0.1));
   }
@@ -99,9 +94,8 @@ for (const provider of providers) {
         ...ranking,
         lastUpdated: new Date(),
       });
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DEBUG
-    } else if (DEBUG) {
-      // FIXME
+    } else if (cliArguments.testLessTitles) {
+      // TODO: this should be on a verbose flag instead of a debug flag
       console.log(
         `Skipping ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
       );
