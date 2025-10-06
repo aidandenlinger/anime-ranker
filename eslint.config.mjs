@@ -44,6 +44,9 @@ export default defineConfig(
   }),
   {
     rules: {
+      // I like a consistent standard and I'm prone to flipflopping without enforcement
+      "@typescript-eslint/naming-convention": "error",
+
       // Keep imports consistent.
       // I don't love the settings and lack of autofixing, but something is better than nothing :shrug:
       "sort-imports": "error",

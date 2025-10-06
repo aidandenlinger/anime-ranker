@@ -1,5 +1,5 @@
 import { type TestContext, suite, test } from "node:test";
-import { title_similarity } from "./string-comp.ts";
+import { titleSimilarity } from "./string-comp.ts";
 
 suite("string comparison", () => {
   test("Different, but similar string", (t) => {
@@ -29,9 +29,9 @@ suite("string comparison", () => {
   });
 
   test("Not similar strings", (t) => {
-    not_similar(t, "Tokyo Vice", "The Tokyo Project");
-    not_similar(t, "RWBY", "RWBY: Ice Queendom");
-    not_similar(t, "Terraformars", "Terra Formars: Revenge");
+    notSimilar(t, "Tokyo Vice", "The Tokyo Project");
+    notSimilar(t, "RWBY", "RWBY: Ice Queendom");
+    notSimilar(t, "Terraformars", "Terra Formars: Revenge");
   });
 });
 
@@ -43,7 +43,7 @@ suite("string comparison", () => {
  * @throws {import("node:assert").AssertionError} if strings are not similar
  */
 function similar(t: TestContext, string1: string, string2: string) {
-  t.assert.strictEqual(title_similarity(string1, string2), "similar");
+  t.assert.strictEqual(titleSimilarity(string1, string2), "similar");
 }
 
 /**
@@ -53,6 +53,6 @@ function similar(t: TestContext, string1: string, string2: string) {
  * @param string2 Second string to compare
  * @throws {import("node:assert").AssertionError} if strings are similar
  */
-function not_similar(t: TestContext, string1: string, string2: string) {
-  t.assert.strictEqual(title_similarity(string1, string2), "not similar");
+function notSimilar(t: TestContext, string1: string, string2: string) {
+  t.assert.strictEqual(titleSimilarity(string1, string2), "not similar");
 }

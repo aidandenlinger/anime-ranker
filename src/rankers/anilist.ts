@@ -1,7 +1,7 @@
 import type { Providers, Video } from "../providers/provider.ts";
 import type { Rank, Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
-import { title_similarity } from "./string-comp.ts";
+import { titleSimilarity } from "./string-comp.ts";
 import z from "zod";
 
 /**
@@ -24,7 +24,7 @@ export class Anilist implements Ranker {
   readonly #resultsPerSearch = 3;
 
   // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
-  readonly #graphql_query = `query getRanking($search: String!) {
+  readonly #graphqlQuery = `query getRanking($search: String!) {
       Page(perPage: ${this.#resultsPerSearch.toString()}) {
         media(search: $search, type: ANIME) {
           averageScore
@@ -46,12 +46,9 @@ export class Anilist implements Ranker {
    * @returns The average score, and the title on AniList. Returns undefined if it didn't find the show
    */
   async getRanking(video: Video) {
-    const cleaned_title = this.#cleanTitle(
-      video.provider_title,
-      video.provider,
-    );
+    const cleanedTitle = this.#cleanTitle(video.providerTitle, video.provider);
 
-    const results = await this.#parsedRequest(cleaned_title).then((result) =>
+    const results = await this.#parsedRequest(cleanedTitle).then((result) =>
       result.filter(
         ([_, metadata]) =>
           // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
@@ -63,8 +60,8 @@ export class Anilist implements Ranker {
 
     const titleIsIn = (possibleTitles: string[]) =>
       possibleTitles.some(
-        (anilist_title) =>
-          title_similarity(anilist_title, cleaned_title) == "similar",
+        (anilistTitle) =>
+          titleSimilarity(anilistTitle, cleanedTitle) == "similar",
       );
 
     // Two searches - see if any of our titles are in the official titles, and if no matches see if
@@ -76,8 +73,8 @@ export class Anilist implements Ranker {
       results.find(([_, metadata]) =>
         // Ensure that the titles anilist found are close enough to the provider title.
         // Sometimes anilist returns some absolute nonmatches - see the title_similarity test cases for examples we're trying to reject
-        titleIsIn(metadata.all_titles),
-      ) ?? results.find(([_, metadata]) => titleIsIn(metadata.title_synonyms));
+        titleIsIn(metadata.allTitles),
+      ) ?? results.find(([_, metadata]) => titleIsIn(metadata.titleSynonyms));
 
     if (!match) {
       return;
@@ -95,15 +92,16 @@ export class Anilist implements Ranker {
   readonly #throttledRequest = pThrottle({
     limit: 1, // To not overwhelm
     interval: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
-    // eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle
+    /* eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle */
   })((title: string) =>
     fetch(this.api, {
       method: "POST",
       headers: {
+        /* eslint-disable-next-line @typescript-eslint/naming-convention -- "Content-Type" is a specific header */
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        query: this.#graphql_query,
+        query: this.#graphqlQuery,
         variables: { search: title },
       }),
     }),
@@ -121,15 +119,15 @@ export class Anilist implements Ranker {
       request = await this.#throttledRequest(title);
 
       if (!request.ok) {
-        const sleep_sec = Number(request.headers.get("Retry-After") ?? "2");
+        const sleepSec = Number(request.headers.get("Retry-After") ?? "2");
         console.log(
-          `[Anilist] Request failed, likely rate limited, sleeping for ${sleep_sec.toString()} seconds`,
+          `[Anilist] Request failed, likely rate limited, sleeping for ${sleepSec.toString()} seconds`,
         );
-        await new Promise((f) => setTimeout(f, sleep_sec * 1000));
+        await new Promise((f) => setTimeout(f, sleepSec * 1000));
       }
     } while (!request.ok);
 
-    return this.#AnilistResp.parse(await request.json());
+    return this.#anilistResp.parse(await request.json());
   }
 
   /**
@@ -160,9 +158,10 @@ export class Anilist implements Ranker {
   }
 
   /** Anilist's response to our query. */
-  readonly #AnilistResp = z
+  readonly #anilistResp = z
     .object({
       data: z.object({
+        /* eslint-disable-next-line @typescript-eslint/naming-convention -- this is anilist's response, I don't name it */
         Page: z.object({
           media: z.array(
             z.object({
@@ -188,17 +187,17 @@ export class Anilist implements Ranker {
         return [
           {
             score: result.averageScore ?? undefined,
-            ranker_title: result.title.english ?? result.title.romaji,
-            ranker_url: new URL(result.siteUrl),
+            rankerTitle: result.title.english ?? result.title.romaji,
+            rankerURL: new URL(result.siteUrl),
             ranker: this.name,
           },
           {
             format: result.format ?? undefined,
-            all_titles: [
+            allTitles: [
               result.title.english ?? undefined,
               result.title.romaji,
             ].filter((a) => a !== undefined),
-            title_synonyms: result.synonyms,
+            titleSynonyms: result.synonyms,
           },
         ];
       });
@@ -211,9 +210,9 @@ type Metadata = Readonly<{
   /** The format of the show, to ensure we have a movie or TV show. */
   format: MediaFormat | undefined;
   /** All titles for the show in Latin characters */
-  all_titles: string[];
+  allTitles: string[];
   /** All possible synonyms for the show, a fallback if no titles match. */
-  title_synonyms: string[];
+  titleSynonyms: string[];
 }>;
 
 /**
@@ -249,6 +248,8 @@ type MediaFormat = (typeof anilistMediaFormat)[number];
 const acceptedMediaFormats: Readonly<
   Record<Video["type"], readonly MediaFormat[]>
 > = {
+  /* eslint-disable @typescript-eslint/naming-convention -- using an enum as a key */
   TV: ["TV", "TV_SHORT", "SPECIAL", "OVA", "ONA"],
   MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"],
+  /* eslint-enable @typescript-eslint/naming-convention -- done enuming */
 };

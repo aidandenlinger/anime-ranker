@@ -28,11 +28,11 @@ export const videoType = ["TV", "MOVIE"] as const;
  */
 export type Video = Readonly<{
   /** The tile of the show on the provider. */
-  provider_title: string;
+  providerTitle: string;
   /** If it is a TV show or a movie. */
   type: (typeof videoType)[number];
   /** How to access the show on the provider. */
-  provider_url: URL;
+  providerURL: URL;
   /** The provider this show is on. */
   provider: Providers;
 }>;

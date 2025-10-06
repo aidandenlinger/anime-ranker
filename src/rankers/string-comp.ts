@@ -7,15 +7,15 @@ const THRESHOLD = 0.9;
 
 /**
  * Determine how similar two titles are to each other.
- * @param title_1 The first title to compare
- * @param title_2 The second title to compare
+ * @param title1 The first title to compare
+ * @param title2 The second title to compare
  * @returns if the strings are similar or not
  */
-export function title_similarity(
-  title_1: string,
-  title_2: string,
+export function titleSimilarity(
+  title1: string,
+  title2: string,
 ): "similar" | "not similar" {
-  return comp.levenshtein.similarity(title_1, title_2) >= THRESHOLD
+  return comp.levenshtein.similarity(title1, title2) >= THRESHOLD
     ? "similar"
     : "not similar";
 }

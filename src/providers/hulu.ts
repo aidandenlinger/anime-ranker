@@ -27,6 +27,7 @@ export class Hulu implements Provider {
         requestOptions: {
           method: "GET",
           // I've had the request get rejected when it has the default user agent
+          /* eslint-disable-next-line @typescript-eslint/naming-convention -- "User-Agent" is a specific header */
           headers: { "User-Agent": "Anime-Ranker" },
         },
       });
@@ -39,7 +40,7 @@ export class Hulu implements Provider {
       .map((_, element) => {
         const selector = $(element).children().first();
 
-        return this.#HuluParsed.parse({
+        return this.#huluParsed.parse({
           title: selector.attr("title"),
           href: selector.attr("href"),
         });
@@ -52,7 +53,7 @@ export class Hulu implements Provider {
   /**
    * A parsed version of Hulu's site data.
    */
-  readonly #HuluParsed = z
+  readonly #huluParsed = z
     .object({
       title: z.string(),
       href: validHuluHref,
@@ -68,11 +69,16 @@ export class Hulu implements Provider {
         type = href satisfies never;
       }
 
-      const provider_url = new URL(href, "https://hulu.com");
+      const providerURL = new URL(href, "https://hulu.com");
       // We don't need the referrer
-      provider_url.searchParams.delete("lp_referrer");
+      providerURL.searchParams.delete("lp_referrer");
 
-      return { provider_title: title, provider_url, type, provider: this.name };
+      return {
+        providerTitle: title,
+        providerURL: providerURL,
+        type,
+        provider: this.name,
+      };
     })
     .readonly();
 }

@@ -71,10 +71,10 @@ for (const provider of providers) {
   } else if (cliArguments.testTitle) {
     const substrings = cliArguments.testTitle;
     videos = videos.filter((video) =>
-      substrings.some((substring) => video.provider_title.includes(substring)),
+      substrings.some((substring) => video.providerTitle.includes(substring)),
     );
     console.log(
-      `[--test-titles] Only checking ${videos.map((video) => video.provider_title).join(", ")}`,
+      `[--test-titles] Only checking ${videos.map((video) => video.providerTitle).join(", ")}`,
     );
   }
 
@@ -102,18 +102,18 @@ for (const provider of providers) {
 
     if (ranking.score && ranking.score >= 80) {
       console.log(
-        `You should watch ${ranking.ranker_title} on ${provider.name}`,
+        `You should watch ${ranking.rankerTitle} on ${provider.name}`,
       );
     } else {
       console.log(
-        `Skip ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
+        `Skip ${ranking.rankerTitle} as score is ${ranking.score?.toString() ?? "undefined"}`,
       );
     }
   }
 
   if (noMatch.length > 0) {
     console.warn(
-      `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.provider_title))}`,
+      `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.providerTitle))}`,
     );
     if (provider.name === "Netflix") {
       console.warn(
@@ -128,7 +128,7 @@ for (const provider of providers) {
     (a, b) =>
       (b.score ?? Number.NEGATIVE_INFINITY) -
         (a.score ?? Number.NEGATIVE_INFINITY) ||
-      a.provider_title.localeCompare(b.provider_title),
+      a.providerTitle.localeCompare(b.providerTitle),
   );
 
   const OUT_DIR = path.join(import.meta.dirname, "..", "out");

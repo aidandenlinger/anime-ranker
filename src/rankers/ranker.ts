@@ -20,9 +20,9 @@ export type Rank = Readonly<{
    * English title of the show on the ranker.
    * If there is no English title, this should be romaji.
    */
-  ranker_title: string;
+  rankerTitle: string;
   /** URL to the show on the ranker. */
-  ranker_url: URL;
+  rankerURL: URL;
   /**
    * The average score of the show on anilist - a weighted average out of
    * 100, accounting for the number of people who reviewed it. See
