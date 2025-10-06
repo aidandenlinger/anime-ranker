@@ -123,10 +123,11 @@ for (const provider of providers) {
   }
 
   // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
-  // undefined -> Infinity, largest number, so end of list
+  // undefined -> NEGATIVE_INFINITY, smallest score, end of list
   results.sort(
     (a, b) =>
-      (b.score ?? Infinity) - (a.score ?? Infinity) ||
+      (b.score ?? Number.NEGATIVE_INFINITY) -
+        (a.score ?? Number.NEGATIVE_INFINITY) ||
       a.provider_title.localeCompare(b.provider_title),
   );
 
