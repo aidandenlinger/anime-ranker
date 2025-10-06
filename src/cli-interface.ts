@@ -24,7 +24,16 @@ export const cliInterface = new Command()
     )
       .argParser(parseArgumentToInt)
       .default(false)
-      .hideHelp(),
+      .hideHelp()
+      .conflicts(["testTitle"]),
+  )
+  .addOption(
+    new Option(
+      "--test-title <titles...>",
+      "Internal testing flag. Filters provider titles down to those which contain any of the substrings provided here.",
+    )
+      .hideHelp()
+      .conflicts(["testLessTitles"]),
   );
 
 // TODO: --verbose flag with logger

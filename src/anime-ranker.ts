@@ -56,6 +56,7 @@ for (const provider of providers) {
     continue;
   }
 
+  // If any testing flags are provided, filter the videos down
   if (cliArguments.testLessTitles) {
     const seed =
       typeof cliArguments.testLessTitles === "number"
@@ -67,9 +68,17 @@ for (const provider of providers) {
     videos = shuffle(videos, seed);
     // Only take 10% (but at least 1 element)
     videos = videos.slice(0, Math.max(1, videos.length * 0.1));
+  } else if (cliArguments.testTitle) {
+    const substrings = cliArguments.testTitle;
+    videos = videos.filter((video) =>
+      substrings.some((substring) => video.provider_title.includes(substring)),
+    );
+    console.log(
+      `[--test-titles] Only checking ${videos.map((video) => video.provider_title).join(", ")}`,
+    );
   }
 
-  const toWatch: RankedVideo[] = [];
+  const results: RankedVideo[] = [];
 
   const noMatch: Video[] = [];
 
@@ -85,25 +94,20 @@ for (const provider of providers) {
       continue;
     }
 
+    results.push({
+      ...video,
+      ...ranking,
+      lastUpdated: new Date(),
+    });
+
     if (ranking.score && ranking.score >= 80) {
       console.log(
         `You should watch ${ranking.ranker_title} on ${provider.name}`,
       );
-      toWatch.push({
-        ...video,
-        ...ranking,
-        lastUpdated: new Date(),
-      });
-    } else if (cliArguments.testLessTitles) {
-      // TODO: this should be on a verbose flag instead of a debug flag
+    } else {
       console.log(
-        `Skipping ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
+        `Skip ${ranking.ranker_title} as score is ${ranking.score?.toString() ?? "undefined"}`,
       );
-      toWatch.push({
-        ...video,
-        ...ranking,
-        lastUpdated: new Date(),
-      });
     }
   }
 
@@ -120,7 +124,7 @@ for (const provider of providers) {
 
   // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
   // undefined -> Infinity, largest number, so end of list
-  toWatch.sort(
+  results.sort(
     (a, b) =>
       (b.score ?? Infinity) - (a.score ?? Infinity) ||
       a.provider_title.localeCompare(b.provider_title),
@@ -132,6 +136,6 @@ for (const provider of providers) {
     `${provider.name}_${new Date().toISOString()}.json`,
   );
   await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(file, JSON.stringify(toWatch, undefined, 2));
+  await writeFile(file, JSON.stringify(results, undefined, 2));
   console.log(`Wrote results, sorted by score, to ${file}`);
 }
