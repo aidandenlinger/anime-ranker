@@ -1,5 +1,5 @@
 import type { Providers, Video } from "../providers/provider.ts";
-import type { Ranker } from "./ranker.ts";
+import type { Rank, Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
 import { title_similarity } from "./string-comp.ts";
 import z from "zod";
@@ -51,35 +51,39 @@ export class Anilist implements Ranker {
       video.provider,
     );
 
-    const results = await this.#parsedRequest(cleaned_title);
+    const results = await this.#parsedRequest(cleaned_title).then((result) =>
+      result.filter(
+        ([_, metadata]) =>
+          // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
+          metadata.format !== undefined &&
+          // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
+          acceptedMediaFormats[video.type].includes(metadata.format),
+      ),
+    );
 
-    // We need to find the first result that has our expected format. This
-    // avoids problems with series that have TV shows *and* movies - we want to
-    // make sure we get the correct one.
-    const match = results.find(
-      (anime) =>
-        // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
-        anime.format !== undefined &&
-        // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
-        acceptedMediaFormats[video.type].includes(anime.format) &&
+    const titleIsIn = (possibleTitles: string[]) =>
+      possibleTitles.some(
+        (anilist_title) =>
+          title_similarity(anilist_title, cleaned_title) == "similar",
+      );
+
+    // Two searches - see if any of our titles are in the official titles, and if no matches see if
+    // they're in the *synonyms* of any entries. Why not do synonyms in the first search? Synonyms
+    // seem to be less regulated, ie https://anilist.co/anime/154178 is a set of shorts yet it has
+    // the main show's title in its synonyms so it'd match first. Why consider synonyms at all? Hulu
+    // uses a synonym for this show - https://anilist.co/anime/158028
+    const match =
+      results.find(([_, metadata]) =>
         // Ensure that the titles anilist found are close enough to the provider title.
         // Sometimes anilist returns some absolute nonmatches - see the title_similarity test cases for examples we're trying to reject
-        anime.possible_titles.some(
-          (anilist_title) =>
-            title_similarity(anilist_title, cleaned_title) == "similar",
-        ),
-    );
+        titleIsIn(metadata.all_titles),
+      ) ?? results.find(([_, metadata]) => titleIsIn(metadata.title_synonyms));
 
     if (!match) {
       return;
     }
 
-    // Define "answer" as everything from match minus
-    //   anilist's format field, we only needed it to assert we found the correct show
-    //   the possible titles, we don't need them anymore
-    const { format: _a, possible_titles: _b, ...answer } = match;
-
-    return answer;
+    return match[0];
   }
 
   /**
@@ -180,23 +184,37 @@ export class Anilist implements Ranker {
     .transform((resp) => {
       const results = resp.data.Page.media;
 
-      return results.map((result) => {
-        return {
-          score: result.averageScore ?? undefined,
-          ranker_title: result.title.english ?? result.title.romaji,
-          possible_titles: [
-            result.title.english ?? undefined,
-            result.title.romaji,
-            ...result.synonyms,
-          ].filter((a) => a !== undefined),
-          ranker_url: new URL(result.siteUrl),
-          ranker: this.name,
-          format: result.format ?? undefined,
-        };
+      return results.map((result): [Rank, Metadata] => {
+        return [
+          {
+            score: result.averageScore ?? undefined,
+            ranker_title: result.title.english ?? result.title.romaji,
+            ranker_url: new URL(result.siteUrl),
+            ranker: this.name,
+          },
+          {
+            format: result.format ?? undefined,
+            all_titles: [
+              result.title.english ?? undefined,
+              result.title.romaji,
+            ].filter((a) => a !== undefined),
+            title_synonyms: result.synonyms,
+          },
+        ];
       });
     })
     .readonly();
 }
+
+/** Metadata used to match an anime to a search result. */
+type Metadata = Readonly<{
+  /** The format of the show, to ensure we have a movie or TV show. */
+  format: MediaFormat | undefined;
+  /** All titles for the show in Latin characters */
+  all_titles: string[];
+  /** All possible synonyms for the show, a fallback if no titles match. */
+  title_synonyms: string[];
+}>;
 
 /**
  * Anilist's MediaFormat type.
