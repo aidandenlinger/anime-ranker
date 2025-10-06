@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
 import type { Rank } from "./rankers/ranker.ts";
+import { SingleBar } from "cli-progress";
 import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
 import shuffle from "knuth-shuffle-seeded";
@@ -79,7 +80,6 @@ for (const provider of providers) {
   }
 
   const results: RankedVideo[] = [];
-
   const noMatch: Video[] = [];
 
   // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
@@ -87,7 +87,18 @@ for (const provider of providers) {
 
   const ranker = new Anilist();
 
+  const progressBar = new SingleBar({
+    format:
+      "[{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}",
+    stopOnComplete: true,
+    clearOnComplete: true,
+    hideCursor: true,
+    gracefulExit: true,
+  });
+  progressBar.start(videos.length, 0);
+
   for (const video of videos) {
+    progressBar.update({ title: video.providerTitle });
     const ranking = await ranker.getRanking(video);
     if (!ranking) {
       noMatch.push(video);
@@ -99,17 +110,24 @@ for (const provider of providers) {
       ...ranking,
       lastUpdated: new Date(),
     });
-
-    if (ranking.score && ranking.score >= 80) {
-      console.log(
-        `You should watch ${ranking.rankerTitle} on ${provider.name}`,
-      );
-    } else {
-      console.log(
-        `Skip ${ranking.rankerTitle} as score is ${ranking.score?.toString() ?? "undefined"}`,
-      );
-    }
+    progressBar.increment();
   }
+  console.log(); // newline
+
+  // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
+  // undefined -> NEGATIVE_INFINITY, smallest score, end of list
+  results.sort(
+    (a, b) =>
+      (b.score ?? Number.NEGATIVE_INFINITY) -
+        (a.score ?? Number.NEGATIVE_INFINITY) ||
+      a.providerTitle.localeCompare(b.providerTitle),
+  );
+
+  console.log(`On ${provider.name}, you should watch:`);
+  for (const video of results.filter((v) => v.score && v.score >= 80)) {
+    console.log(`- ${video.providerTitle}`);
+  }
+  console.log(); // newline
 
   if (noMatch.length > 0) {
     console.warn(
@@ -122,15 +140,6 @@ for (const provider of providers) {
     }
   }
 
-  // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
-  // undefined -> NEGATIVE_INFINITY, smallest score, end of list
-  results.sort(
-    (a, b) =>
-      (b.score ?? Number.NEGATIVE_INFINITY) -
-        (a.score ?? Number.NEGATIVE_INFINITY) ||
-      a.providerTitle.localeCompare(b.providerTitle),
-  );
-
   const OUT_DIR = path.join(import.meta.dirname, "..", "out");
   const file = path.join(
     OUT_DIR,
@@ -138,5 +147,5 @@ for (const provider of providers) {
   );
   await mkdir(OUT_DIR, { recursive: true });
   await writeFile(file, JSON.stringify(results, undefined, 2));
-  console.log(`Wrote results, sorted by score, to ${file}`);
+  console.log(`Wrote all results, sorted by score, to ${file}`);
 }

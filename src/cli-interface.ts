@@ -36,8 +36,6 @@ export const cliInterface = new Command()
       .conflicts(["testLessTitles"]),
   );
 
-// TODO: --verbose flag with logger
-
 /**
  * @param input A CLI argument to be parsed into a number
  * @returns parsed value
