@@ -32,7 +32,7 @@ export class Hulu implements Provider {
         },
       });
     } catch (error) {
-      throw new Error(`[Hulu] Request not okay: ${JSON.stringify(error)}}`);
+      throw new Error("[Hulu] Request not okay", { cause: error });
     }
 
     const titles = $("div .ListCardItem")

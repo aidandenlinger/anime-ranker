@@ -1,10 +1,10 @@
 import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
+import { Presets, SingleBar } from "cli-progress";
 import type { Provider, Video } from "./providers/provider.ts";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
 import type { Rank } from "./rankers/ranker.ts";
-import { SingleBar } from "cli-progress";
 import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
 import shuffle from "knuth-shuffle-seeded";
@@ -45,7 +45,6 @@ for (const provider of cliArguments.providers) {
 }
 
 for (const provider of providers) {
-  console.log(`Querying ${provider.name}...`);
   let videos;
   try {
     videos = await provider.getAnime();
@@ -64,7 +63,9 @@ for (const provider of providers) {
         ? cliArguments.testLessTitles
         : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
-    console.log(`[--test-less-titles] Seed: ${seed.toString()}`);
+    console.log(
+      `[--test-less-titles] ${provider.name} seed: ${seed.toString()}`,
+    );
 
     videos = shuffle(videos, seed);
     // Only take 10% (but at least 1 element)
@@ -87,19 +88,24 @@ for (const provider of providers) {
 
   const ranker = new Anilist();
 
-  const progressBar = new SingleBar({
-    format:
-      "[{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}",
-    stopOnComplete: true,
-    clearOnComplete: true,
-    hideCursor: true,
-    gracefulExit: true,
-  });
+  const progressBar = new SingleBar(
+    {
+      format: `${provider.name} {bar} {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}`,
+      stopOnComplete: true,
+      clearOnComplete: true,
+      hideCursor: true,
+      gracefulExit: true,
+    },
+    Presets.shades_grey,
+  );
   progressBar.start(videos.length, 0);
 
   for (const video of videos) {
     progressBar.update({ title: video.providerTitle });
     const ranking = await ranker.getRanking(video);
+
+    progressBar.increment();
+
     if (!ranking) {
       noMatch.push(video);
       continue;
@@ -110,7 +116,6 @@ for (const provider of providers) {
       ...ranking,
       lastUpdated: new Date(),
     });
-    progressBar.increment();
   }
   console.log(); // newline
 
@@ -124,14 +129,16 @@ for (const provider of providers) {
   );
 
   console.log(`On ${provider.name}, you should watch:`);
-  for (const video of results.filter((v) => v.score && v.score >= 80)) {
-    console.log(`- ${video.providerTitle}`);
+  for (const video of results) {
+    if (video.score && video.score >= 80) {
+      console.log(`- ${video.providerTitle} (${video.score.toString()})`);
+    }
   }
   console.log(); // newline
 
   if (noMatch.length > 0) {
     console.warn(
-      `Anilist couldn't find a match for ${JSON.stringify(noMatch.map((t) => t.providerTitle))}`,
+      `Anilist couldn't find a match for ${noMatch.map((t) => t.providerTitle).join(", ")}`,
     );
     if (provider.name === "Netflix") {
       console.warn(
