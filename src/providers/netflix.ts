@@ -19,10 +19,17 @@ type NetflixCookies = z.infer<typeof netflixCookiesSchema>;
  * Gets a list of all anime under {@link https://netflix.com|Netflix's} Anime genre (7424).
  */
 export class Netflix implements Provider {
+  /** Human-readable name for the provider. */
   name: Providers = "Netflix";
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
+  /** A Netflix API to query for titles. */
   api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
+
+  /** The genre code for anime on netflix - https://netflix.com/browse/genre/7424 */
+  // It doesn't get *everything* (ie Den-noh Coil) but it gets the vast
+  // majority, which is good enough for me :)
+  readonly #animeGenreCode = 7424;
 
   /**
    * The `SecureNetflixId` and `NetflixId` of an active Netflix session.
@@ -76,9 +83,7 @@ export class Netflix implements Provider {
     const parameters = new URLSearchParams({
       path: JSON.stringify([
         "genres",
-        // "7424" is the anime genre on netflix. it doesn't get *everything*
-        // (ie Den-noh Coil) but it gets the vast majority, which is good enough for me :)
-        7424,
+        this.#animeGenreCode,
         // get titles from A-Z. alternatives: "su" (suggestions for you),
         // "yr" (by year), "za" (backwards alphabetically)
         "az",
@@ -92,7 +97,7 @@ export class Netflix implements Provider {
     return fetch(this.api, {
       headers: {
         cookie: Object.entries(this.#cookies)
-          .map(([key, value]) => key + "=" + value)
+          .map(([key, value]) => `${key}=${value}`)
           .join(";"),
       },
       body: parameters,
@@ -110,8 +115,9 @@ export class Netflix implements Provider {
     const response = await this.#throttledRequest(page);
 
     if (!response.ok) {
+      const UNAUTHORIZED_ERROR_RESPONSE = 401;
       throw new Error(
-        `[Netflix] Request not okay: ${response.status.toString()} ${response.statusText} ${response.status === 401 ? "(Are your cookies valid?)" : ""}`,
+        `[Netflix] Request not okay: ${response.status.toString()} ${response.statusText} ${response.status === UNAUTHORIZED_ERROR_RESPONSE ? "(Are your cookies valid?)" : ""}`,
       );
     }
 
@@ -126,6 +132,7 @@ export class Netflix implements Provider {
     .object({
       value: z.object({
         genres: z.object({
+          // NOTE: This should always be equal to #animeGenreCode. I'd like to enforce this in code if possible.
           /* eslint-disable-next-line @typescript-eslint/naming-convention -- This is netflix's response, I don't control it */
           "7424": z.object({
             az: z.record(

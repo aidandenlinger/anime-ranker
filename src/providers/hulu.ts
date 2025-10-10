@@ -6,6 +6,7 @@ import z from "zod";
  * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
  */
 export class Hulu implements Provider {
+  /** Human-readable identifier for the provider */
   name: Providers = "Hulu";
 
   // Of note - they actually have separate pages for TV and movies.
@@ -14,6 +15,7 @@ export class Hulu implements Provider {
   // I'm sticking with the simple one-request-gets-both approach, but it's
   // good to have the option if I decide to refactor
   // Another note - they maintain a list of what's being added/removed every month at https://press.hulu.com/schedule/
+  /** Not *really* an api - an html page we parse to get all titles. */
   api = new URL("https://www.hulu.com/sitemap/genres/anime");
 
   /**

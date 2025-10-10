@@ -8,8 +8,10 @@ import z from "zod";
  * Gets rankings from {@link https://anilist.co|Anilist}.
  */
 export class Anilist implements Ranker {
+  /** Human readable name for the ranker. */
   name: Ranker["name"] = "Anilist";
 
+  /** API to query - {@link https://docs.anilist.co|docs here}. */
   api = new URL("https://graphql.anilist.co");
 
   /**
@@ -23,7 +25,8 @@ export class Anilist implements Ranker {
    */
   readonly #resultsPerSearch = 3;
 
-  // NOTE: the type parameter only takes ANIME or MANGA. So we explicitly want to set it to ANIME.
+  /** The query to retrieve titles/scores/etc from anilist. */
+  // NOTE: the type parameter determines between ANIME or MANGA, so we explicitly set it to ANIME here. We'll use the `format` field to filter between movies and TV shows.
   readonly #graphqlQuery = `query getRanking($search: String!) {
       Page(perPage: ${this.#resultsPerSearch.toString()}) {
         media(search: $search, type: ANIME) {
@@ -50,7 +53,7 @@ export class Anilist implements Ranker {
 
     const results = await this.#parsedRequest(cleanedTitle).then((result) =>
       result.filter(
-        ([_, metadata]) =>
+        ([_rank, metadata]) =>
           // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
           metadata.format !== undefined &&
           // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
@@ -61,7 +64,7 @@ export class Anilist implements Ranker {
     const titleIsIn = (possibleTitles: string[]) =>
       possibleTitles.some(
         (anilistTitle) =>
-          titleSimilarity(anilistTitle, cleanedTitle) == "similar",
+          titleSimilarity(anilistTitle, cleanedTitle) === "similar",
       );
 
     // Two searches - see if any of our titles are in the official titles, and if no matches see if
@@ -70,11 +73,12 @@ export class Anilist implements Ranker {
     // the main show's title in its synonyms so it'd match first. Why consider synonyms at all? Hulu
     // uses a synonym for this show - https://anilist.co/anime/158028
     const match =
-      results.find(([_, metadata]) =>
+      results.find(([_rank, metadata]) =>
         // Ensure that the titles anilist found are close enough to the provider title.
         // Sometimes anilist returns some absolute nonmatches - see the title_similarity test cases for examples we're trying to reject
         titleIsIn(metadata.allTitles),
-      ) ?? results.find(([_, metadata]) => titleIsIn(metadata.titleSynonyms));
+      ) ??
+      results.find(([_rank, metadata]) => titleIsIn(metadata.titleSynonyms));
 
     if (!match) {
       return;
@@ -123,7 +127,8 @@ export class Anilist implements Ranker {
         console.log(
           `[Anilist] Request failed, likely rate limited, sleeping for ${sleepSec.toString()} seconds`,
         );
-        await new Promise((f) => setTimeout(f, sleepSec * 1000));
+        const SEC_TO_MS = 1000;
+        await new Promise((f) => setTimeout(f, sleepSec * SEC_TO_MS));
       }
     } while (!request.ok);
 

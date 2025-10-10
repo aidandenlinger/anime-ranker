@@ -7,6 +7,7 @@ import { Hulu } from "./providers/hulu.ts";
 import type { Rank } from "./rankers/ranker.ts";
 import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
+import process from "node:process";
 import shuffle from "knuth-shuffle-seeded";
 import z from "zod";
 
@@ -18,6 +19,9 @@ type RankedVideo = Readonly<
       lastUpdated: Date;
     }
 >;
+
+/** The minimum score an anime must hold to be printed at the end of the program as recommended. */
+const SCORE_THRESHOLD = 80;
 
 const cliArguments = cliInterface.parse().opts();
 
@@ -68,8 +72,9 @@ for (const provider of providers) {
     );
 
     videos = shuffle(videos, seed);
-    // Only take 10% (but at least 1 element)
-    videos = videos.slice(0, Math.max(1, videos.length * 0.1));
+    // Take 10% (but at least 1 element)
+    const PERCENTAGE = 0.1;
+    videos = videos.slice(0, Math.max(1, videos.length * PERCENTAGE));
   } else if (cliArguments.testTitle) {
     const substrings = cliArguments.testTitle;
     videos = videos.filter((video) =>
@@ -130,7 +135,7 @@ for (const provider of providers) {
 
   console.log(`On ${provider.name}, you should watch:`);
   for (const video of results) {
-    if (video.score && video.score >= 80) {
+    if (video.score && video.score >= SCORE_THRESHOLD) {
       console.log(`- ${video.providerTitle} (${video.score.toString()})`);
     }
   }
@@ -153,6 +158,7 @@ for (const provider of providers) {
     `${provider.name}_${new Date().toISOString()}.json`,
   );
   await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(file, JSON.stringify(results, undefined, 2));
+  const INDENT_SPACING = 2; // uses 2 spaces to indent the JSON - much more readable
+  await writeFile(file, JSON.stringify(results, undefined, INDENT_SPACING));
   console.log(`Wrote all results, sorted by score, to ${file}`);
 }
