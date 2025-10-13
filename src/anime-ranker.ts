@@ -4,21 +4,12 @@ import type { Provider, Video } from "./providers/provider.ts";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
 import { Hulu } from "./providers/hulu.ts";
-import type { Rank } from "./rankers/ranker.ts";
+import type { RankedVideo } from "./database/ranked-video.ts";
 import { cliInterface } from "./cli-interface.ts";
 import path from "node:path";
 import process from "node:process";
 import shuffle from "knuth-shuffle-seeded";
 import z from "zod";
-
-/** A video with its ranking and all associated information. The final output of this script. */
-type RankedVideo = Readonly<
-  Video &
-    Rank & {
-      /** The time this ranking was compiled. */
-      lastUpdated: Date;
-    }
->;
 
 /** The minimum score an anime must hold to be printed at the end of the program as recommended. */
 const SCORE_THRESHOLD = 80;

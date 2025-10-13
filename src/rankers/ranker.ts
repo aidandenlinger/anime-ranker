@@ -32,7 +32,7 @@ export type Rank = Readonly<{
    * A score may be undefined - this is typically because the show is new and
    * doesn't have a ranking yet.
    */
-  score: number | undefined;
+  score?: number | undefined;
   /** Name of the ranker. */
   ranker: Ranker["name"];
 }>;
