@@ -20,6 +20,7 @@ suite("string comparison", () => {
   test("Changes punctuation", (t) => {
     similar(t, "Naruto Shippuden", "Naruto: Shippuden");
     similar(t, "Tsukimichi: Moonlit Fantasy", "TSUKIMICHI -Moonlit Fantasy-");
+    similar(t, "Bakuman", "Bakuman.");
   });
 
   test("Changes capitalization", (t) => {

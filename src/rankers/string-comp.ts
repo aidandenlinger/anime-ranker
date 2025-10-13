@@ -3,7 +3,7 @@ import comp from "string-comparison";
 // Threshold at which we can determine two strings as similar enough
 // to be correct
 // Experimentally determined via test suite
-const THRESHOLD = 0.9;
+const THRESHOLD = 0.85;
 
 /**
  * Determine how similar two titles are to each other.
