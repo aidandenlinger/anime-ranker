@@ -159,6 +159,11 @@ export default defineConfig(
           ],
         },
       ],
+
+      // I want to document numbers in program logic. raw numbers in unit tests
+      // are fine, they aren't program logic, they're examples. Documenting
+      // these random examples of numbers causes noise rather than being useful.
+      "@typescript-eslint/no-magic-numbers": "off",
     },
   },
   {

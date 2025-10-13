@@ -1,3 +1,4 @@
+import { P, match } from "ts-pattern";
 import {
   type RankedVideo,
   createRankedVideoTable,
@@ -5,11 +6,15 @@ import {
 } from "./ranked-video.ts";
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
 import { DatabaseSync } from "node:sqlite";
+import type { Providers } from "../providers/provider.ts";
 
 /**
  * Class to add and list entries from a database. It must be closed when operations are done!
  */
 export class Database {
+  /** The filepath of this database. */
+  readonly path: string;
+
   /** Our connection to the database which actually lets us read/write. */
   readonly #conn: DatabaseSync;
 
@@ -19,12 +24,18 @@ export class Database {
 
   /** @param databasePath A filepath to an existing database, or the place to write a new database */
   constructor(databasePath: string) {
+    this.path = databasePath;
     this.#conn = new DatabaseSync(databasePath);
     this.#conn.exec(createRankedVideoTable);
     // Compile our statements ahead of time
     this.#preparedStatements = {
       insert: this.#conn.prepare(this.#insertStatement),
       getAll: this.#conn.prepare(this.#getAll),
+      getAllProvider: this.#conn.prepare(this.#getAllProvider),
+      getAllMinScore: this.#conn.prepare(this.#getAllMinimumScore),
+      getAllProviderMinScore: this.#conn.prepare(
+        this.#getAllProviderMinimumScore,
+      ),
     };
   }
 
@@ -68,10 +79,50 @@ export class Database {
     ORDER BY score DESC, providerTitle ASC
   `;
 
-  /** @returns All RankedVideos in the database */
-  getAll() {
-    return this.#preparedStatements.getAll
-      .all()
+  /** SQL statement to get all rankings from a certain provider. */
+  readonly #getAllProvider = `
+    SELECT * FROM Ranks
+    WHERE provider = :provider
+    ORDER BY score DESC, providerTitle ASC
+  `;
+
+  /** SQL statement to get all rankings with a minimum score. */
+  readonly #getAllMinimumScore = `
+    SELECT * FROM Ranks
+    WHERE score >= :minimumScore
+    ORDER BY score DESC, providerTitle ASC
+  `;
+
+  /** SQL statement to get all rankings with a certain provider and a minimum score. */
+  readonly #getAllProviderMinimumScore = `
+    SELECT * FROM Ranks
+    WHERE
+        provider = :provider
+        AND score >= :minimumScore
+    ORDER BY score DESC, providerTitle ASC
+  `;
+
+  /**
+   * @param provider An optional provider - if given, only returns videos for that provider
+   * @param minimumScore An optional minimum score - if given, only provides videos with at least that score
+   * @returns All RankedVideos in the database
+   */
+  getAll(provider?: Providers, minimumScore?: number) {
+    return match([provider, minimumScore])
+      .with([undefined, undefined], () => this.#preparedStatements.getAll.all())
+      .with([P.nonNullable.select(), undefined], (provider) =>
+        this.#preparedStatements.getAllProvider.all({ provider }),
+      )
+      .with([undefined, P.nonNullable.select()], (minimumScore) =>
+        this.#preparedStatements.getAllMinScore.all({ minimumScore }),
+      )
+      .with([P.nonNullable, P.nonNullable], ([provider, minimumScore]) =>
+        this.#preparedStatements.getAllProviderMinScore.all({
+          provider,
+          minimumScore,
+        }),
+      )
+      .exhaustive()
       .map((result) => rankedVideoSchema.parse(result));
   }
 

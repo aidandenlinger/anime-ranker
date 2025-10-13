@@ -55,6 +55,33 @@ suite("DB testing", () => {
     t.assert.throws(() => {
       database.insert(undefinedScore);
     });
+
+    // Test out filters!
+
+    // Provider only:
+    t.assert.deepStrictEqual(database.getAll("Hulu"), [
+      rank85StartsWithG,
+      undefinedScore,
+    ]);
+
+    t.assert.deepStrictEqual(database.getAll("Netflix"), [
+      rank82StartsWithS,
+      rank79StartsWithO,
+      rank79StartsWithR,
+    ]);
+
+    // Score only:
+    t.assert.deepStrictEqual(database.getAll(undefined, 80), [
+      rank85StartsWithG,
+      rank82StartsWithS,
+    ]);
+
+    // Provider and score:
+    t.assert.deepStrictEqual(database.getAll("Hulu", 80), [rank85StartsWithG]);
+
+    t.assert.deepStrictEqual(database.getAll("Netflix", 80), [
+      rank82StartsWithS,
+    ]);
   });
 
   // Ensure DB is deleted

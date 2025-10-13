@@ -1,11 +1,11 @@
 import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
 import type { Provider, Video } from "./providers/provider.ts";
-import { mkdir, writeFile } from "node:fs/promises";
 import { Anilist } from "./rankers/anilist.ts";
+import { Database } from "./database/database.ts";
 import { Hulu } from "./providers/hulu.ts";
-import type { RankedVideo } from "./database/ranked-video.ts";
 import { cliInterface } from "./cli-interface.ts";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import shuffle from "knuth-shuffle-seeded";
@@ -76,7 +76,11 @@ for (const provider of providers) {
     );
   }
 
-  const results: RankedVideo[] = [];
+  const OUT_DIR = path.join(import.meta.dirname, "..", "out");
+  await mkdir(OUT_DIR, { recursive: true });
+  const database = new Database(
+    path.join(OUT_DIR, `${provider.name}_${new Date().toISOString()}.sqlite`),
+  );
   const noMatch: Video[] = [];
 
   // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
@@ -107,7 +111,7 @@ for (const provider of providers) {
       continue;
     }
 
-    results.push({
+    database.insert({
       ...video,
       ...ranking,
       lastUpdated: new Date(),
@@ -115,18 +119,10 @@ for (const provider of providers) {
   }
   console.log(); // newline
 
-  // We're gonna sort by ranking, highest to lowest, then alphabetically if score is the same
-  // undefined -> NEGATIVE_INFINITY, smallest score, end of list
-  results.sort(
-    (a, b) =>
-      (b.score ?? Number.NEGATIVE_INFINITY) -
-        (a.score ?? Number.NEGATIVE_INFINITY) ||
-      a.providerTitle.localeCompare(b.providerTitle),
-  );
-
   console.log(`On ${provider.name}, you should watch:`);
-  for (const video of results) {
-    if (video.score && video.score >= SCORE_THRESHOLD) {
+  for (const video of database.getAll(provider.name, SCORE_THRESHOLD)) {
+    // TODO: this if check should be unnecessary, the score will be defined, I'd need to do some typing on `getAll` to assert that though.
+    if (video.score) {
       console.log(`- ${video.providerTitle} (${video.score.toString()})`);
     }
   }
@@ -143,13 +139,6 @@ for (const provider of providers) {
     }
   }
 
-  const OUT_DIR = path.join(import.meta.dirname, "..", "out");
-  const file = path.join(
-    OUT_DIR,
-    `${provider.name}_${new Date().toISOString()}.json`,
-  );
-  await mkdir(OUT_DIR, { recursive: true });
-  const INDENT_SPACING = 2; // uses 2 spaces to indent the JSON - much more readable
-  await writeFile(file, JSON.stringify(results, undefined, INDENT_SPACING));
-  console.log(`Wrote all results, sorted by score, to ${file}`);
+  database.close();
+  console.log(`Wrote all results, sorted by score, to ${database.path}`);
 }
