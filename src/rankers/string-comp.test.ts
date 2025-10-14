@@ -44,7 +44,7 @@ suite("string comparison", () => {
  * @throws {import("node:assert").AssertionError} if strings are not similar
  */
 function similar(t: TestContext, string1: string, string2: string) {
-  t.assert.strictEqual(titleSimilarity(string1, string2), "similar");
+  t.assert.deepStrictEqual(titleSimilarity(string1, string2), "similar");
 }
 
 /**
@@ -55,5 +55,5 @@ function similar(t: TestContext, string1: string, string2: string) {
  * @throws {import("node:assert").AssertionError} if strings are similar
  */
 function notSimilar(t: TestContext, string1: string, string2: string) {
-  t.assert.strictEqual(titleSimilarity(string1, string2), "not similar");
+  t.assert.deepStrictEqual(titleSimilarity(string1, string2), "not similar");
 }
