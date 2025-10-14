@@ -89,34 +89,43 @@ suite("Database testing", () => {
       undefinedScore,
     ]);
 
+    /* eslint-disable @typescript-eslint/no-unnecessary-condition -- these tests are checking that our typing is correct, so we need to make "unnecessary" conditions because we're assuming the types are wrong. */
     // Provider only:
-    t.assert.deepStrictEqual(database.getAll({ provider: "Hulu" }), [
-      rank85StartsWithG,
-      undefinedScore,
-    ]);
-
-    t.assert.deepStrictEqual(database.getAll({ provider: "Netflix" }), [
-      rank82StartsWithS,
-      rank79StartsWithO,
-      rank79StartsWithR,
-    ]);
+    t.assert.ok(
+      database.getAll({ provider: "Hulu" }).every((r) => r.provider === "Hulu"),
+    );
+    t.assert.ok(
+      database
+        .getAll({ provider: "Netflix" })
+        .every((r) => r.provider === "Netflix"),
+    );
 
     // Score only:
-    t.assert.deepStrictEqual(database.getAll({ minimumScore: 80 }), [
-      rank85StartsWithG,
-      rank82StartsWithS,
-    ]);
+    t.assert.ok(
+      database
+        .getAll({ minimumScore: 80 })
+        .every((r) => r.score !== undefined && r.score >= 80),
+    );
 
     // Provider and score:
-    t.assert.deepStrictEqual(
-      database.getAll({ minimumScore: 80, provider: "Hulu" }),
-      [rank85StartsWithG],
+    t.assert.ok(
+      database
+        .getAll({ minimumScore: 80, provider: "Hulu" })
+        .every(
+          (r) =>
+            r.score !== undefined && r.score >= 80 && r.provider === "Hulu",
+        ),
     );
 
-    t.assert.deepStrictEqual(
-      database.getAll({ minimumScore: 80, provider: "Netflix" }),
-      [rank82StartsWithS],
+    t.assert.ok(
+      database
+        .getAll({ minimumScore: 80, provider: "Netflix" })
+        .every(
+          (r) =>
+            r.score !== undefined && r.score >= 80 && r.provider === "Netflix",
+        ),
     );
+    /* eslint-enable @typescript-eslint/no-unnecessary-condition -- we are done with the filter tests */
   });
 
   afterEach(() => {

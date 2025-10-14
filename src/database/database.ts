@@ -163,7 +163,9 @@ export class Database {
 
     if (options?.minimumScore) {
       const minimumScore = options.minimumScore;
-      assert.ok(results.every((r) => r.score && r.score >= minimumScore));
+      assert.ok(
+        results.every((r) => r.score !== undefined && r.score >= minimumScore),
+      );
     }
 
     return results;
