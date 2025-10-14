@@ -7,6 +7,7 @@ import {
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
 import { DatabaseSync } from "node:sqlite";
 import type { Providers } from "../providers/provider.ts";
+import assert from "node:assert/strict";
 
 /**
  * Class to add and list entries from a database. It must be closed when operations are done!
@@ -124,7 +125,7 @@ export class Database {
    * @returns All RankedVideos meeting the criteria
    */
   getAll(options?: GetAllOptions) {
-    return match([options?.provider, options?.minimumScore])
+    const results = match([options?.provider, options?.minimumScore])
       .with([undefined, undefined], () => this.#preparedStatements.getAll.all())
       .with([P.nonNullable.select(), undefined], (provider) =>
         this.#preparedStatements.getAllProvider.all({ provider }),
@@ -140,6 +141,19 @@ export class Database {
       )
       .exhaustive()
       .map((result) => rankedVideoSchema.parse(result));
+
+    // Some runtime asserts to ensure our typing is correct, and catch any errors if we change the SQL statements.
+    if (options?.provider) {
+      const provider = options.provider;
+      assert.ok(results.every((r) => r.provider === provider));
+    }
+
+    if (options?.minimumScore) {
+      const minimumScore = options.minimumScore;
+      assert.ok(results.every((r) => r.score && r.score >= minimumScore));
+    }
+
+    return results;
   }
 
   /**
