@@ -1,7 +1,7 @@
 import { type TestContext, suite, test } from "node:test";
 import { titleSimilarity } from "./string-comp.ts";
 
-suite("string comparison", () => {
+suite("String comparison", () => {
   test("Different, but similar string", (t) => {
     similar(
       t,

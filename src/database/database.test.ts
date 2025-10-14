@@ -1,23 +1,46 @@
-import { type TestContext, after, before, suite, test } from "node:test";
+import {
+  type TestContext,
+  after,
+  afterEach,
+  before,
+  beforeEach,
+  suite,
+  test,
+} from "node:test";
+import { mkdtemp, rm } from "node:fs/promises";
 import { Database } from "./database.ts";
 import type { RankedVideo } from "./ranked-video.ts";
-import { rm } from "node:fs/promises";
+import path from "node:path";
+import { tmpdir } from "node:os";
 
 // This is a demonstration of how to use the DB class.
-suite("DB testing", () => {
+suite("Database testing", () => {
+  /** A temporary directory to store created databases. Deleted at the end of the suite. */
+  let temporaryDatabaseDirectory: string;
+  /** At the start of each test, points to a new, empty database. */
   let database: Database;
-  const DB_PATH = "unit-test.sqlite";
 
-  before(() => {
-    database = new Database(DB_PATH);
+  before(async () => {
+    temporaryDatabaseDirectory = await mkdtemp(
+      path.join(tmpdir(), "anime-ranker-unittests-"),
+    );
   });
 
-  test("DB usage example", (t: TestContext) => {
+  /** Before each test, define database to be a new, empty database. */
+  beforeEach((t) => {
+    const databaseName = `${t.name.toLowerCase().replaceAll(" ", "-")}.sqlite`;
+    database = new Database(
+      path.join(temporaryDatabaseDirectory, databaseName),
+    );
+  });
+
+  test("Adding and listing rankings", (t: TestContext) => {
     database.insert(rank85StartsWithG);
 
     // We can insert and retrieve from the database
     t.assert.deepStrictEqual(database.getAll(), [rank85StartsWithG]);
 
+    // Inserting rank 82 *after* rank 79, to assert that ordering is unique to insertion order
     database.insert(rank79StartsWithR);
     database.insert(rank82StartsWithS);
 
@@ -55,8 +78,16 @@ suite("DB testing", () => {
     t.assert.throws(() => {
       database.insert(undefinedScore);
     });
+  });
 
-    // Test out filters!
+  test("Filtering listed rankings", (t: TestContext) => {
+    database.insertMany([
+      rank85StartsWithG,
+      rank82StartsWithS,
+      rank79StartsWithO,
+      rank79StartsWithR,
+      undefinedScore,
+    ]);
 
     // Provider only:
     t.assert.deepStrictEqual(database.getAll({ provider: "Hulu" }), [
@@ -88,10 +119,13 @@ suite("DB testing", () => {
     );
   });
 
-  // Ensure DB is deleted
-  after(async () => {
+  afterEach(() => {
     database.close();
-    await rm(DB_PATH, { force: true });
+  });
+
+  /** Deletes all databases by deleting the temporary folder holding them. */
+  after(async () => {
+    await rm(temporaryDatabaseDirectory, { recursive: true, force: true });
   });
 });
 

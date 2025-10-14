@@ -74,6 +74,19 @@ export class Database {
     this.#preparedStatements.insert.run(rankedVideoSchema.encode(video));
   }
 
+  /**
+   * Insert many videos into the database in one transaction.
+   * @param videos The videos to add
+   * @throws {Error} if a video with the same providerTitle and provider is in the database
+   */
+  insertMany(videos: RankedVideo[]) {
+    this.#conn.exec("BEGIN TRANSACTION");
+    for (const video of videos) {
+      this.insert(video);
+    }
+    this.#conn.exec("COMMIT");
+  }
+
   /** SQL statement to get all rankings from the SQL database. */
   readonly #getAll = `
     SELECT * FROM Ranks
