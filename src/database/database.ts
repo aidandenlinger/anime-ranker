@@ -103,12 +103,28 @@ export class Database {
   `;
 
   /**
-   * @param provider An optional provider - if given, only returns videos for that provider
-   * @param minimumScore An optional minimum score - if given, only provides videos with at least that score
-   * @returns All RankedVideos in the database
+   * Get all with a minimum score defined - score cannot be undefined.
+   * @param options Optional criteria that the listed videos must fufill
+   * @returns All RankedVideos with a minimum score
    */
-  getAll(provider?: Providers, minimumScore?: number) {
-    return match([provider, minimumScore])
+  getAll<Provider extends Providers>(
+    options: RequiredProperty<GetAllOptions<Provider>, "minimumScore">,
+  ): RequiredProperty<RankedVideo<Provider>, "score">[];
+
+  /**
+   * @param options Optional criteria that the listed videos must fufill
+   * @returns All RankedVideos meeting the criteria
+   */
+  getAll<Provider extends Providers>(
+    options?: GetAllOptions<Provider>,
+  ): RankedVideo<Provider>[];
+
+  /**
+   * @param options Optional criteria that the listed videos must fufill
+   * @returns All RankedVideos meeting the criteria
+   */
+  getAll(options?: GetAllOptions) {
+    return match([options?.provider, options?.minimumScore])
       .with([undefined, undefined], () => this.#preparedStatements.getAll.all())
       .with([P.nonNullable.select(), undefined], (provider) =>
         this.#preparedStatements.getAllProvider.all({ provider }),
@@ -137,3 +153,16 @@ export class Database {
     }
   }
 }
+
+/** Optional filters for retrieving rankings. */
+type GetAllOptions<Provider extends Providers = Providers> = Readonly<{
+  /** An optional minimum score for listed videos. */
+  minimumScore?: number;
+  /** An optional provider for listed videos. */
+  provider?: Provider;
+}>;
+
+/** Utility type to make a field optional and non nullable. Based on https://stackoverflow.com/a/53050575 */
+type RequiredProperty<Type, Key extends keyof Type> = {
+  [Property in Key]-?: Required<NonNullable<Type[Property]>>;
+} & Omit<Type, Key>;

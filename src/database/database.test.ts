@@ -59,29 +59,33 @@ suite("DB testing", () => {
     // Test out filters!
 
     // Provider only:
-    t.assert.deepStrictEqual(database.getAll("Hulu"), [
+    t.assert.deepStrictEqual(database.getAll({ provider: "Hulu" }), [
       rank85StartsWithG,
       undefinedScore,
     ]);
 
-    t.assert.deepStrictEqual(database.getAll("Netflix"), [
+    t.assert.deepStrictEqual(database.getAll({ provider: "Netflix" }), [
       rank82StartsWithS,
       rank79StartsWithO,
       rank79StartsWithR,
     ]);
 
     // Score only:
-    t.assert.deepStrictEqual(database.getAll(undefined, 80), [
+    t.assert.deepStrictEqual(database.getAll({ minimumScore: 80 }), [
       rank85StartsWithG,
       rank82StartsWithS,
     ]);
 
     // Provider and score:
-    t.assert.deepStrictEqual(database.getAll("Hulu", 80), [rank85StartsWithG]);
+    t.assert.deepStrictEqual(
+      database.getAll({ minimumScore: 80, provider: "Hulu" }),
+      [rank85StartsWithG],
+    );
 
-    t.assert.deepStrictEqual(database.getAll("Netflix", 80), [
-      rank82StartsWithS,
-    ]);
+    t.assert.deepStrictEqual(
+      database.getAll({ minimumScore: 80, provider: "Netflix" }),
+      [rank82StartsWithS],
+    );
   });
 
   // Ensure DB is deleted

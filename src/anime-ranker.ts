@@ -120,11 +120,11 @@ for (const provider of providers) {
   console.log(); // newline
 
   console.log(`On ${provider.name}, you should watch:`);
-  for (const video of database.getAll(provider.name, SCORE_THRESHOLD)) {
-    // TODO: this if check should be unnecessary, the score will be defined, I'd need to do some typing on `getAll` to assert that though.
-    if (video.score) {
-      console.log(`- ${video.providerTitle} (${video.score.toString()})`);
-    }
+  for (const video of database.getAll({
+    minimumScore: SCORE_THRESHOLD,
+    provider: provider.name,
+  })) {
+    console.log(`- ${video.providerTitle} (${video.score.toString()})`);
   }
   console.log(); // newline
 

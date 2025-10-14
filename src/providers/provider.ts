@@ -26,7 +26,7 @@ export const videoType = ["TV", "MOVIE"] as const;
 /**
  * A video on a streaming service.
  */
-export type Video = Readonly<{
+export type Video<Provider extends Providers = Providers> = Readonly<{
   /** The tile of the show on the provider. */
   providerTitle: string;
   /** If it is a TV show or a movie. */
@@ -34,5 +34,5 @@ export type Video = Readonly<{
   /** How to access the show on the provider. */
   providerURL: URL;
   /** The provider this show is on. */
-  provider: Providers;
+  provider: Provider;
 }>;

@@ -1,13 +1,19 @@
-import { type Video, providers, videoType } from "../providers/provider.ts";
+import {
+  type Providers,
+  type Video,
+  providers,
+  videoType,
+} from "../providers/provider.ts";
 import { type Rank } from "../rankers/ranker.ts";
 import z from "zod";
 
 /** A video with its ranking and all associated information. The final output of this script. */
-export type RankedVideo = Video &
-  Rank & {
-    /** The time this ranking was compiled. */
-    lastUpdated: Date;
-  };
+export type RankedVideo<Provider extends Providers = Providers> =
+  Video<Provider> &
+    Rank & {
+      /** The time this ranking was compiled. */
+      lastUpdated: Date;
+    };
 
 const stringToHttpURL = z.codec(z.httpUrl(), z.instanceof(URL), {
   decode: (urlString) => new URL(urlString),
