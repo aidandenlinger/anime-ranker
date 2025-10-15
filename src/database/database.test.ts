@@ -1,37 +1,21 @@
 import {
   type TestContext,
-  after,
   afterEach,
-  before,
   beforeEach,
   suite,
   test,
 } from "node:test";
-import { mkdtemp, rm } from "node:fs/promises";
 import { Database } from "./database.ts";
 import type { RankedVideo } from "./ranked-video.ts";
-import path from "node:path";
-import { tmpdir } from "node:os";
 
 // This is a demonstration of how to use the DB class.
 suite("Database testing", () => {
-  /** A temporary directory to store created databases. Deleted at the end of the suite. */
-  let temporaryDatabaseDirectory: string;
   /** At the start of each test, points to a new, empty database. */
   let database: Database;
 
-  before(async () => {
-    temporaryDatabaseDirectory = await mkdtemp(
-      path.join(tmpdir(), "anime-ranker-unittests-"),
-    );
-  });
-
-  /** Before each test, define database to be a new, empty database. */
-  beforeEach((t) => {
-    const databaseName = `${t.name.toLowerCase().replaceAll(" ", "-")}.sqlite`;
-    database = new Database(
-      path.join(temporaryDatabaseDirectory, databaseName),
-    );
+  /** Before each test, point to a new in-memory database. */
+  beforeEach(() => {
+    database = new Database(":memory:");
   });
 
   test("Adding and listing rankings", (t: TestContext) => {
@@ -130,11 +114,6 @@ suite("Database testing", () => {
 
   afterEach(() => {
     database.close();
-  });
-
-  /** Deletes all databases by deleting the temporary folder holding them. */
-  after(async () => {
-    await rm(temporaryDatabaseDirectory, { recursive: true, force: true });
   });
 });
 

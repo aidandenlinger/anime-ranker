@@ -23,7 +23,10 @@ export class Database {
   /** A cache of our prepared statements, to allow for efficent reuse. */
   readonly #preparedStatements;
 
-  /** @param databasePath A filepath to an existing database, or the place to write a new database */
+  /**
+   * @param databasePath A filepath to write a new or load an old database,
+   * or the string ":memory:" for a non-persistent, in memory database.
+   */
   constructor(databasePath: string) {
     this.path = databasePath;
     this.#conn = new DatabaseSync(databasePath);
