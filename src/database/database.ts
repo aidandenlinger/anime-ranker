@@ -1,9 +1,10 @@
-import { P, match } from "ts-pattern";
 import {
+  type MaybeRankedVideo,
   type RankedVideo,
   createRankedVideoTable,
-  rankedVideoSchema,
-} from "./ranked-video.ts";
+  maybeRankedVideoSchema,
+} from "./video-schema.ts";
+import { P, match } from "ts-pattern";
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
 import { DatabaseSync } from "node:sqlite";
 import type { Providers } from "../providers/provider.ts";
@@ -36,8 +37,10 @@ export class Database {
       insert: this.#conn.prepare(this.#insertStatement),
       getAll: this.#conn.prepare(this.#getAll),
       getAllProvider: this.#conn.prepare(this.#getAllProvider),
-      getAllMinScore: this.#conn.prepare(this.#getAllMinimumScore),
-      getAllProviderMinScore: this.#conn.prepare(
+      getAllProviderNoScore: this.#conn.prepare(this.#getAllProviderNoScore),
+      getAllNoScore: this.#conn.prepare(this.#getAllNoScore),
+      getAllMinimumScore: this.#conn.prepare(this.#getAllMinimumScore),
+      getAllProviderMininimumScore: this.#conn.prepare(
         this.#getAllProviderMinimumScore,
       ),
     };
@@ -73,8 +76,8 @@ export class Database {
    * @param video Video to add to the database
    * @throws {Error} if a video with the same providerTitle and provider is in the database
    */
-  insert(video: RankedVideo) {
-    this.#preparedStatements.insert.run(rankedVideoSchema.encode(video));
+  insert(video: MaybeRankedVideo) {
+    this.#preparedStatements.insert.run(maybeRankedVideoSchema.encode(video));
   }
 
   /**
@@ -82,7 +85,7 @@ export class Database {
    * @param videos The videos to add
    * @throws {Error} if a video with the same providerTitle and provider is in the database
    */
-  insertMany(videos: RankedVideo[]) {
+  insertMany(videos: MaybeRankedVideo[]) {
     this.#conn.exec("BEGIN TRANSACTION");
     for (const video of videos) {
       this.insert(video);
@@ -103,10 +106,26 @@ export class Database {
     ORDER BY score DESC, providerTitle ASC
   `;
 
+  /** SQL statement to get all entries for a provider without a score */
+  readonly #getAllProviderNoScore = `
+    SELECT * FROM Ranks
+    WHERE
+        provider = :provider
+        AND score IS NULL
+    ORDER BY score DESC, providerTitle ASC
+  `;
+
   /** SQL statement to get all rankings with a minimum score. */
   readonly #getAllMinimumScore = `
     SELECT * FROM Ranks
     WHERE score >= :minimumScore
+    ORDER BY score DESC, providerTitle ASC
+  `;
+
+  /** SQL statement to get all entries lacking a score. */
+  readonly #getAllNoScore = `
+    SELECT * FROM Ranks
+    WHERE score IS NULL
     ORDER BY score DESC, providerTitle ASC
   `;
 
@@ -124,9 +143,17 @@ export class Database {
    * @param options Optional criteria that the listed videos must fufill
    * @returns All RankedVideos with a minimum score
    */
-  getAll<Provider extends Providers>(
-    options: RequiredProperty<GetAllOptions<Provider>, "minimumScore">,
-  ): RequiredProperty<RankedVideo<Provider>, "score">[];
+  getAll<Provider extends Providers>(options: {
+    /** Entry must have a score. */
+    score:
+      | true
+      | {
+          /** A minimum score for an entry to have. */
+          minimumScore: number;
+        };
+    /** A provider that the entries must be on. */
+    provider?: Provider;
+  }): RequiredProperty<RankedVideo<Provider>, "score">[];
 
   /**
    * @param options Optional criteria that the listed videos must fufill
@@ -134,29 +161,44 @@ export class Database {
    */
   getAll<Provider extends Providers>(
     options?: GetAllOptions<Provider>,
-  ): RankedVideo<Provider>[];
+  ): MaybeRankedVideo<Provider>[];
 
   /**
    * @param options Optional criteria that the listed videos must fufill
    * @returns All RankedVideos meeting the criteria
    */
   getAll(options?: GetAllOptions) {
-    const results = match([options?.provider, options?.minimumScore])
+    const results = match([options?.provider, options?.score])
       .with([undefined, undefined], () => this.#preparedStatements.getAll.all())
       .with([P.nonNullable.select(), undefined], (provider) =>
         this.#preparedStatements.getAllProvider.all({ provider }),
       )
-      .with([undefined, P.nonNullable.select()], (minimumScore) =>
-        this.#preparedStatements.getAllMinScore.all({ minimumScore }),
+      .with(
+        [undefined, P.union(true, { minimumScore: P.nonNullable.select() })],
+        (minimumScore) =>
+          this.#preparedStatements.getAllMinimumScore.all({
+            minimumScore: minimumScore ?? 0,
+          }),
       )
-      .with([P.nonNullable, P.nonNullable], ([provider, minimumScore]) =>
-        this.#preparedStatements.getAllProviderMinScore.all({
+      .with([undefined, false], () =>
+        this.#preparedStatements.getAllNoScore.all(),
+      )
+      .with([P.nonNullable.select(), false], (provider) =>
+        this.#preparedStatements.getAllProviderNoScore.all({
           provider,
-          minimumScore,
         }),
       )
+      .with(
+        [P.nonNullable, P.union(true, { minimumScore: P.nonNullable })],
+        ([provider, scoreOptions]) =>
+          this.#preparedStatements.getAllProviderMininimumScore.all({
+            provider,
+            minimumScore:
+              typeof scoreOptions === "boolean" ? 0 : scoreOptions.minimumScore,
+          }),
+      )
       .exhaustive()
-      .map((result) => rankedVideoSchema.parse(result));
+      .map((result) => maybeRankedVideoSchema.parse(result));
 
     // Some runtime asserts to ensure our typing is correct, and catch any errors if we change the SQL statements.
     if (options?.provider) {
@@ -164,8 +206,11 @@ export class Database {
       assert.ok(results.every((r) => r.provider === provider));
     }
 
-    if (options?.minimumScore) {
-      const minimumScore = options.minimumScore;
+    if (options?.score === false) {
+      assert.ok(results.every((r) => r.score === undefined));
+    } else if (options?.score) {
+      const minimumScore =
+        typeof options.score === "boolean" ? 0 : options.score.minimumScore;
       assert.ok(
         results.every((r) => r.score !== undefined && r.score >= minimumScore),
       );
@@ -188,8 +233,13 @@ export class Database {
 
 /** Optional filters for retrieving rankings. */
 type GetAllOptions<Provider extends Providers = Providers> = Readonly<{
-  /** An optional minimum score for listed videos. */
-  minimumScore?: number;
+  /** Enforce that a video has or doesn't have a score, or what the minimum score must be. */
+  score?:
+    | boolean
+    | {
+        /** A minimum score an entry must have to be listed. */
+        minimumScore: number;
+      };
   /** An optional provider for listed videos. */
   provider?: Provider;
 }>;

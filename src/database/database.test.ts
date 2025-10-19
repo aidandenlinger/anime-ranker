@@ -1,3 +1,4 @@
+import type { MaybeRankedVideo, RankedVideo } from "./video-schema.ts";
 import {
   type TestContext,
   afterEach,
@@ -6,7 +7,6 @@ import {
   test,
 } from "node:test";
 import { Database } from "./database.ts";
-import type { RankedVideo } from "./ranked-video.ts";
 
 // This is a demonstration of how to use the DB class.
 suite("Database testing", () => {
@@ -47,15 +47,17 @@ suite("Database testing", () => {
     ]);
 
     // The zod codec is set up to convert an undefined score to null, and convert it back to undefined when reading from the db.
+    // It also works for a video without any rank at all
     // Ensure this behavior works as expected by adding and reading back an entry without a score, and asserting it's at the end of the list.
 
-    database.insert(undefinedScore);
+    database.insertMany([undefinedScore, noRank]);
     t.assert.deepStrictEqual(database.getAll(), [
       rank85StartsWithG,
       rank82StartsWithS,
       rank79StartsWithO,
       rank79StartsWithR,
       undefinedScore,
+      noRank,
     ]);
 
     // Adding a video with the same providerTitle and provider should fail
@@ -71,6 +73,7 @@ suite("Database testing", () => {
       rank79StartsWithO,
       rank79StartsWithR,
       undefinedScore,
+      noRank,
     ]);
 
     /* eslint-disable @typescript-eslint/no-unnecessary-condition -- these tests are checking that our typing is correct, so we need to make "unnecessary" conditions because we're assuming the types are wrong. */
@@ -87,14 +90,22 @@ suite("Database testing", () => {
     // Score only:
     t.assert.ok(
       database
-        .getAll({ minimumScore: 80 })
+        .getAll({ score: { minimumScore: 80 } })
         .every((r) => r.score !== undefined && r.score >= 80),
+    );
+
+    t.assert.ok(
+      database.getAll({ score: true }).every((r) => r.score !== undefined),
+    );
+
+    t.assert.ok(
+      database.getAll({ score: false }).every((r) => r.score === undefined),
     );
 
     // Provider and score:
     t.assert.ok(
       database
-        .getAll({ minimumScore: 80, provider: "Hulu" })
+        .getAll({ score: { minimumScore: 80 }, provider: "Hulu" })
         .every(
           (r) =>
             r.score !== undefined && r.score >= 80 && r.provider === "Hulu",
@@ -103,11 +114,35 @@ suite("Database testing", () => {
 
     t.assert.ok(
       database
-        .getAll({ minimumScore: 80, provider: "Netflix" })
+        .getAll({ score: true, provider: "Hulu" })
+        .every((r) => r.score !== undefined && r.provider === "Hulu"),
+    );
+
+    t.assert.ok(
+      database
+        .getAll({ score: false, provider: "Hulu" })
+        .every((r) => r.score === undefined && r.provider === "Hulu"),
+    );
+
+    t.assert.ok(
+      database
+        .getAll({ score: { minimumScore: 80 }, provider: "Netflix" })
         .every(
           (r) =>
             r.score !== undefined && r.score >= 80 && r.provider === "Netflix",
         ),
+    );
+
+    t.assert.ok(
+      database
+        .getAll({ score: true, provider: "Netflix" })
+        .every((r) => r.score !== undefined && r.provider === "Netflix"),
+    );
+
+    t.assert.ok(
+      database
+        .getAll({ score: false, provider: "Netflix" })
+        .every((r) => r.score === undefined && r.provider === "Netflix"),
     );
     /* eslint-enable @typescript-eslint/no-unnecessary-condition -- we are done with the filter tests */
   });
@@ -181,4 +216,18 @@ const undefinedScore: RankedVideo = {
   rankerURL: new URL("https://anilist.co/anime/188388"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:28:27.684Z"),
+};
+
+const noRank: MaybeRankedVideo = {
+  providerTitle: "Tokyo Vice",
+  providerURL: new URL(
+    "https://www.hulu.com/series/tokyo-vice-df9910a9-2102-4a99-818b-cd2ea6b7e5fa",
+  ),
+  type: "TV",
+  provider: "Hulu",
+  lastUpdated: new Date("2025-10-18T05:59:27.684Z"),
+  ranker: undefined,
+  rankerTitle: undefined,
+  rankerURL: undefined,
+  score: undefined,
 };

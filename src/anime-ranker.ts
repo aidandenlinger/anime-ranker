@@ -1,9 +1,9 @@
 import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
-import type { Provider, Video } from "./providers/provider.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
 import { Hulu } from "./providers/hulu.ts";
+import type { Provider } from "./providers/provider.ts";
 import { cliInterface } from "./cli-interface.ts";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -81,7 +81,6 @@ for (const provider of providers) {
   const database = new Database(
     path.join(OUT_DIR, `${provider.name}_${new Date().toISOString()}.sqlite`),
   );
-  const noMatch: Video[] = [];
 
   // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
   // the future
@@ -106,11 +105,6 @@ for (const provider of providers) {
 
     progressBar.increment();
 
-    if (!ranking) {
-      noMatch.push(video);
-      continue;
-    }
-
     database.insert({
       ...video,
       ...ranking,
@@ -121,16 +115,17 @@ for (const provider of providers) {
 
   console.log(`On ${provider.name}, you should watch:`);
   for (const video of database.getAll({
-    minimumScore: SCORE_THRESHOLD,
+    score: { minimumScore: SCORE_THRESHOLD },
     provider: provider.name,
   })) {
     console.log(`- ${video.providerTitle} (${video.score.toString()})`);
   }
   console.log(); // newline
 
-  if (noMatch.length > 0) {
+  const noScore = database.getAll({ score: false, provider: provider.name });
+  if (noScore.length > 0) {
     console.warn(
-      `Anilist couldn't find a match for ${noMatch.map((t) => t.providerTitle).join(", ")}`,
+      `Anilist couldn't find a score for ${noScore.map((t) => t.providerTitle).join(", ")}`,
     );
     if (provider.name === "Netflix") {
       console.warn(
