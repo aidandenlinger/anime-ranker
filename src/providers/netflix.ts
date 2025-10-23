@@ -1,4 +1,4 @@
-import { type Provider, type Providers, type Video } from "./provider.ts";
+import type { Media, Provider, Providers } from "./provider.ts";
 import pThrottle from "p-throttle";
 import z from "zod";
 
@@ -55,12 +55,12 @@ export class Netflix implements Provider {
    * @returns a list of all anime in the Anime genre of Netflix
    * @throws {Error} if Netflix request does not succeed (often because cookies are invalid) or response isn't as expected
    */
-  async getAnime() {
+  async getMedia() {
     let page = 0;
-    let titles: Video[] = [];
+    let titles: Media[] = [];
 
     // titles from *this* page. needs to be defined out of the block so we can use it in the while condition
-    let pageTitles: readonly Video[];
+    let pageTitles: readonly Media[];
     do {
       pageTitles = await this.#parsedRequest(page);
       titles = [...titles, ...pageTitles];
@@ -151,7 +151,7 @@ export class Netflix implements Provider {
     })
     .transform((response) =>
       Object.values(response.value.genres["7424"].az).map((video) => {
-        let type: Video["type"];
+        let type: Media["type"];
         switch (video.itemSummary.type) {
           case "movie": {
             type = "MOVIE";

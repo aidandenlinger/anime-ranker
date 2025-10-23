@@ -1,24 +1,24 @@
 import {
+  type Media,
   type Providers,
-  type Video,
+  mediaType,
   providers,
-  videoType,
 } from "../providers/provider.ts";
 import { type Rank } from "../rankers/ranker.ts";
 import z from "zod";
 
-/** A video on a provider that may have a ranking. What is stored in the DB. */
-export type MaybeRankedVideo<Provider extends Providers = Providers> = Readonly<
-  Video<Provider> &
+/** Media on a provider that may have a ranking. What is stored in the DB. */
+export type MaybeRankedMedia<Provider extends Providers = Providers> = Readonly<
+  Media<Provider> &
     ZodPartial<Rank> & {
       /** The time this ranking was compiled. */
       lastUpdated: Date;
     }
 >;
 
-/** A video with a ranking. */
-export type RankedVideo<Provider extends Providers = Providers> = Readonly<
-  MaybeRankedVideo<Provider> & Rank
+/** Media with a ranking. */
+export type RankedMedia<Provider extends Providers = Providers> = Readonly<
+  MaybeRankedMedia<Provider> & Rank
 >;
 
 const stringToHttpURL = z.codec(z.httpUrl(), z.instanceof(URL), {
@@ -78,16 +78,16 @@ const nullableRankersToUndefined = z.codec(
   },
 );
 
-// Build our schema of video and rank, and combine into a RankedVideo schema.
+// Build our schema of media and rank, and combine into a RankedMedia schema.
 // Why define them as types and then build a schema? Types keep JSDocs, which I want easily accessible for these types.
 // So we build the schema after and keep them in sync by checking they satisfy the types.
 // Making a zod schema to satisfy a TypeScript type is an antipattern so it'd be nice to figure something better out.
-const videoSchema = z.object({
+const mediaSchema = z.object({
   providerTitle: z.string(),
-  type: z.enum(videoType),
+  type: z.enum(mediaType),
   providerURL: stringToHttpURL,
   provider: z.enum(providers),
-}) satisfies z.ZodType<Video>;
+}) satisfies z.ZodType<Media>;
 
 const maybeRankSchema = z.object({
   rankerTitle: nullableStringToUndefined,
@@ -96,14 +96,14 @@ const maybeRankSchema = z.object({
   ranker: nullableRankersToUndefined,
 }) satisfies z.ZodType<ZodPartial<Rank>>;
 
-export const maybeRankedVideoSchema = videoSchema
+export const maybeRankedMediaSchema = mediaSchema
   .safeExtend(maybeRankSchema.shape)
   .safeExtend({
     lastUpdated: isoDatetimeToDate,
-  }) satisfies z.ZodType<MaybeRankedVideo>;
+  }) satisfies z.ZodType<MaybeRankedMedia>;
 
-// WARNING: must be kept in sync with ranked video's schema!
-export const createRankedVideoTable = `
+// WARNING: must be kept in sync with maybeRankedMediaSchema's schema!
+export const createRankedMediaTable = `
 CREATE TABLE IF NOT EXISTS Ranks (
   providerTitle TEXT NOT NULL,
   type TEXT NOT NULL,

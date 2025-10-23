@@ -1,4 +1,4 @@
-import type { MaybeRankedVideo, RankedVideo } from "./video-schema.ts";
+import type { MaybeRankedMedia, RankedMedia } from "./media-schema.ts";
 import {
   type TestContext,
   afterEach,
@@ -47,7 +47,7 @@ suite("Database testing", () => {
     ]);
 
     // The zod codec is set up to convert an undefined score to null, and convert it back to undefined when reading from the db.
-    // It also works for a video without any rank at all
+    // It also works for media without any rank at all
     // Ensure this behavior works as expected by adding and reading back an entry without a score, and asserting it's at the end of the list.
 
     database.insertMany([undefinedScore, noRank]);
@@ -60,7 +60,7 @@ suite("Database testing", () => {
       noRank,
     ]);
 
-    // Adding a video with the same providerTitle and provider should fail
+    // Adding media with the same providerTitle and provider should fail
     t.assert.throws(() => {
       database.insert(undefinedScore);
     });
@@ -154,7 +154,7 @@ suite("Database testing", () => {
 
 // Test data
 
-const rank85StartsWithG: RankedVideo = {
+const rank85StartsWithG: RankedMedia = {
   providerTitle: "Gurren Lagann",
   providerURL: new URL(
     "https://hulu.com/series/gurren-lagann-6ea27f41-e422-4c58-8e06-9ad1602903b7",
@@ -168,7 +168,7 @@ const rank85StartsWithG: RankedVideo = {
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
 };
 
-const rank82StartsWithS: RankedVideo = {
+const rank82StartsWithS: RankedMedia = {
   providerTitle: "Suzume",
   providerURL: new URL("https://netflix.com/title/81696498"),
   type: "MOVIE",
@@ -180,7 +180,7 @@ const rank82StartsWithS: RankedVideo = {
   lastUpdated: new Date("2025-10-06T05:29:15.192Z"),
 };
 
-const rank79StartsWithO: RankedVideo = {
+const rank79StartsWithO: RankedMedia = {
   providerTitle: "One Piece Film Z",
   providerURL: new URL("https://netflix.com/title/80198443"),
   type: "MOVIE",
@@ -192,7 +192,7 @@ const rank79StartsWithO: RankedVideo = {
   lastUpdated: new Date("2025-10-06T05:29:41.304Z"),
 };
 
-const rank79StartsWithR: RankedVideo = {
+const rank79StartsWithR: RankedMedia = {
   providerTitle: "Romantic Killer",
   providerURL: new URL("https://netflix.com/title/81318888"),
   type: "TV",
@@ -204,7 +204,7 @@ const rank79StartsWithR: RankedVideo = {
   lastUpdated: new Date("2025-10-06T05:15:32.534Z"),
 };
 
-const undefinedScore: RankedVideo = {
+const undefinedScore: RankedMedia = {
   providerTitle: "Digimon Beatbreak",
   providerURL: new URL(
     "https://hulu.com/series/digimon-beatbreak-4c47f9ab-f6b8-45ec-8fb9-fbd5ed1a5529",
@@ -218,7 +218,7 @@ const undefinedScore: RankedVideo = {
   lastUpdated: new Date("2025-10-06T05:28:27.684Z"),
 };
 
-const noRank: MaybeRankedVideo = {
+const noRank: MaybeRankedMedia = {
   providerTitle: "Tokyo Vice",
   providerURL: new URL(
     "https://www.hulu.com/series/tokyo-vice-df9910a9-2102-4a99-818b-cd2ea6b7e5fa",

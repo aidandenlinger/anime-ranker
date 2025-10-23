@@ -1,4 +1,4 @@
-import type { Providers, Video } from "../providers/provider.ts";
+import type { Media, Providers } from "../providers/provider.ts";
 import type { Rank, Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
 import { titleSimilarity } from "./string-comp.ts";
@@ -45,11 +45,11 @@ export class Anilist implements Ranker {
 
   /**
    * Given an anime title, return its average score on anilist.
-   * @param video The title of the anime
+   * @param media The title of the anime
    * @returns The average score, and the title on AniList. Returns undefined if it didn't find the show
    */
-  async getRanking(video: Video) {
-    const cleanedTitle = this.#cleanTitle(video.providerTitle, video.provider);
+  async getRanking(media: Media) {
+    const cleanedTitle = this.#cleanTitle(media.providerTitle, media.provider);
 
     const results = await this.#parsedRequest(cleanedTitle).then((result) =>
       result.filter(
@@ -57,7 +57,7 @@ export class Anilist implements Ranker {
           // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
           metadata.format !== undefined &&
           // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
-          acceptedMediaFormats[video.type].includes(metadata.format),
+          acceptedMediaFormats[media.type].includes(metadata.format),
       ),
     );
 
@@ -238,10 +238,12 @@ const anilistMediaFormat = [
   "ONA",
   /** (Not relevant) Short anime released as a music video */
   "MUSIC",
-  // The rest are non visual and not relevant here
+  /** Professionally published manga with more than one chapter */
   "MANGA",
-  "NOVEL",
+  /** Manga with just one chapter */
   "ONE_SHOT",
+  /** (Not relevant for this script) Written books released as a series of light novels */
+  "NOVEL",
 ] as const;
 
 /**
@@ -251,10 +253,11 @@ type MediaFormat = (typeof anilistMediaFormat)[number];
 
 /** Maps basic media types to a list of anilist MediaFormats. */
 const acceptedMediaFormats: Readonly<
-  Record<Video["type"], readonly MediaFormat[]>
+  Record<Media["type"], readonly MediaFormat[]>
 > = {
   /* eslint-disable @typescript-eslint/naming-convention -- using an enum as a key */
   TV: ["TV", "TV_SHORT", "SPECIAL", "OVA", "ONA"],
   MOVIE: ["MOVIE", "SPECIAL", "OVA", "ONA"],
+  MANGA: ["MANGA", "ONE_SHOT"],
   /* eslint-enable @typescript-eslint/naming-convention -- done enuming */
 };

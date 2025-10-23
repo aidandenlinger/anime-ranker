@@ -40,9 +40,9 @@ for (const provider of cliArguments.providers) {
 }
 
 for (const provider of providers) {
-  let videos;
+  let mediaList;
   try {
-    videos = await provider.getAnime();
+    mediaList = await provider.getMedia();
   } catch (error) {
     if (error instanceof Error) {
       console.warn(error.message);
@@ -51,7 +51,7 @@ for (const provider of providers) {
     continue;
   }
 
-  // If any testing flags are provided, filter the videos down
+  // If any testing flags are provided, filter the media down
   if (cliArguments.testLessTitles) {
     const seed =
       typeof cliArguments.testLessTitles === "number"
@@ -62,17 +62,17 @@ for (const provider of providers) {
       `[--test-less-titles] ${provider.name} seed: ${seed.toString()}`,
     );
 
-    videos = shuffle(videos, seed);
+    mediaList = shuffle(mediaList, seed);
     // Take 10% (but at least 1 element)
     const PERCENTAGE = 0.1;
-    videos = videos.slice(0, Math.max(1, videos.length * PERCENTAGE));
+    mediaList = mediaList.slice(0, Math.max(1, mediaList.length * PERCENTAGE));
   } else if (cliArguments.testTitle) {
     const substrings = cliArguments.testTitle;
-    videos = videos.filter((video) =>
-      substrings.some((substring) => video.providerTitle.includes(substring)),
+    mediaList = mediaList.filter((media) =>
+      substrings.some((substring) => media.providerTitle.includes(substring)),
     );
     console.log(
-      `[--test-titles] Only checking ${videos.map((video) => video.providerTitle).join(", ")}`,
+      `[--test-titles] Only checking ${mediaList.map((media) => media.providerTitle).join(", ")}`,
     );
   }
 
@@ -97,16 +97,16 @@ for (const provider of providers) {
     },
     Presets.shades_grey,
   );
-  progressBar.start(videos.length, 0);
+  progressBar.start(mediaList.length, 0);
 
-  for (const video of videos) {
-    progressBar.update({ title: video.providerTitle });
-    const ranking = await ranker.getRanking(video);
+  for (const media of mediaList) {
+    progressBar.update({ title: media.providerTitle });
+    const ranking = await ranker.getRanking(media);
 
     progressBar.increment();
 
     database.insert({
-      ...video,
+      ...media,
       ...ranking,
       lastUpdated: new Date(),
     });
@@ -114,11 +114,11 @@ for (const provider of providers) {
   console.log(); // newline
 
   console.log(`On ${provider.name}, you should watch:`);
-  for (const video of database.getAll({
+  for (const media of database.getAll({
     score: { minimumScore: SCORE_THRESHOLD },
     provider: provider.name,
   })) {
-    console.log(`- ${video.providerTitle} (${video.score.toString()})`);
+    console.log(`- ${media.providerTitle} (${media.score.toString()})`);
   }
   console.log(); // newline
 

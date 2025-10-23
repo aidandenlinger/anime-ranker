@@ -1,4 +1,4 @@
-import { type Provider, type Providers, type Video } from "./provider.ts";
+import type { Media, Provider, Providers } from "./provider.ts";
 import { fromURL } from "cheerio";
 import z from "zod";
 
@@ -22,7 +22,7 @@ export class Hulu implements Provider {
    * @returns a list of all anime on Hulu.
    * @throws {Error} if HTML request fails or response isn't as expected
    */
-  async getAnime() {
+  async getMedia() {
     let $;
     try {
       $ = await fromURL(this.api, {
@@ -61,7 +61,7 @@ export class Hulu implements Provider {
       href: validHuluHref,
     })
     .transform(({ title, href }) => {
-      let type: Video["type"];
+      let type: Media["type"];
       if (hrefIs("/movie", href)) {
         type = "MOVIE";
       } else if (hrefIs("/series", href)) {

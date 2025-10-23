@@ -1,9 +1,9 @@
 import {
-  type MaybeRankedVideo,
-  type RankedVideo,
-  createRankedVideoTable,
-  maybeRankedVideoSchema,
-} from "./video-schema.ts";
+  type MaybeRankedMedia,
+  type RankedMedia,
+  createRankedMediaTable,
+  maybeRankedMediaSchema,
+} from "./media-schema.ts";
 import { P, match } from "ts-pattern";
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
 import { DatabaseSync } from "node:sqlite";
@@ -31,7 +31,7 @@ export class Database {
   constructor(databasePath: string) {
     this.path = databasePath;
     this.#conn = new DatabaseSync(databasePath);
-    this.#conn.exec(createRankedVideoTable);
+    this.#conn.exec(createRankedMediaTable);
     // Compile our statements ahead of time
     this.#preparedStatements = {
       insert: this.#conn.prepare(this.#insertStatement),
@@ -73,22 +73,22 @@ export class Database {
   `;
 
   /**
-   * @param video Video to add to the database
-   * @throws {Error} if a video with the same providerTitle and provider is in the database
+   * @param media Video to add to the database
+   * @throws {Error} if media with the same providerTitle and provider is in the database
    */
-  insert(video: MaybeRankedVideo) {
-    this.#preparedStatements.insert.run(maybeRankedVideoSchema.encode(video));
+  insert(media: MaybeRankedMedia) {
+    this.#preparedStatements.insert.run(maybeRankedMediaSchema.encode(media));
   }
 
   /**
-   * Insert many videos into the database in one transaction.
-   * @param videos The videos to add
-   * @throws {Error} if a video with the same providerTitle and provider is in the database
+   * Insert multiple media into the database in one transaction.
+   * @param mediaList The media to add
+   * @throws {Error} if media with the same providerTitle and provider is in the database
    */
-  insertMany(videos: MaybeRankedVideo[]) {
+  insertMany(mediaList: MaybeRankedMedia[]) {
     this.#conn.exec("BEGIN TRANSACTION");
-    for (const video of videos) {
-      this.insert(video);
+    for (const media of mediaList) {
+      this.insert(media);
     }
     this.#conn.exec("COMMIT");
   }
@@ -140,7 +140,7 @@ export class Database {
 
   /**
    * Get all with a minimum score defined - score cannot be undefined.
-   * @param options Optional criteria that the listed videos must fufill
+   * @param options Optional criteria that the listed media must fufill
    * @returns All RankedVideos with a minimum score
    */
   getAll<Provider extends Providers>(options: {
@@ -153,18 +153,18 @@ export class Database {
         };
     /** A provider that the entries must be on. */
     provider?: Provider;
-  }): RequiredProperty<RankedVideo<Provider>, "score">[];
+  }): RequiredProperty<RankedMedia<Provider>, "score">[];
 
   /**
-   * @param options Optional criteria that the listed videos must fufill
+   * @param options Optional criteria that the listed media must fufill
    * @returns All RankedVideos meeting the criteria
    */
   getAll<Provider extends Providers>(
     options?: GetAllOptions<Provider>,
-  ): MaybeRankedVideo<Provider>[];
+  ): MaybeRankedMedia<Provider>[];
 
   /**
-   * @param options Optional criteria that the listed videos must fufill
+   * @param options Optional criteria that the listed media must fufill
    * @returns All RankedVideos meeting the criteria
    */
   getAll(options?: GetAllOptions) {
@@ -198,7 +198,7 @@ export class Database {
           }),
       )
       .exhaustive()
-      .map((result) => maybeRankedVideoSchema.parse(result));
+      .map((result) => maybeRankedMediaSchema.parse(result));
 
     // Some runtime asserts to ensure our typing is correct, and catch any errors if we change the SQL statements.
     if (options?.provider) {
@@ -233,14 +233,14 @@ export class Database {
 
 /** Optional filters for retrieving rankings. */
 type GetAllOptions<Provider extends Providers = Providers> = Readonly<{
-  /** Enforce that a video has or doesn't have a score, or what the minimum score must be. */
+  /** Enforce that media has or doesn't have a score, or what the minimum score must be. */
   score?:
     | boolean
     | {
         /** A minimum score an entry must have to be listed. */
         minimumScore: number;
       };
-  /** An optional provider for listed videos. */
+  /** An optional provider for listed media. */
   provider?: Provider;
 }>;
 
