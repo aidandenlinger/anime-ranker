@@ -18,7 +18,7 @@ const DEFAULT_RESULTS_PER_SEARCH = 3;
  */
 export class Anilist implements Ranker {
   /** Human readable name for the ranker. */
-  name: Ranker["name"] = "Anilist";
+  name = "Anilist" as const;
 
   /** API to query - {@link https://docs.anilist.co|docs here}. */
   api = new URL("https://graphql.anilist.co");
@@ -49,6 +49,7 @@ export class Anilist implements Ranker {
       Page(perPage: ${numberOfResults.toString()}) {
         media(search: $search, type: ${queryType}) {
           averageScore
+          meanScore
           title {
             english
             romaji
@@ -194,6 +195,9 @@ export class Anilist implements Ranker {
             z.object({
               // null if it's a new show without enough ratings
               averageScore: z.number().nullable(),
+              // Sometimes entries have enough ratings for a mean score but not
+              // for an average (particularly for smaller manga). Used as a fallback score.
+              meanScore: z.number().nullable(),
               title: z.object({
                 english: z.string().nullable(),
                 romaji: z.string(),
@@ -213,7 +217,7 @@ export class Anilist implements Ranker {
       return results.map((result): [Rank, Metadata] => {
         return [
           {
-            score: result.averageScore ?? undefined,
+            score: result.averageScore ?? result.meanScore ?? undefined,
             rankerTitle: result.title.english ?? result.title.romaji,
             rankerURL: new URL(result.siteUrl),
             ranker: this.name,
