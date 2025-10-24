@@ -48,6 +48,12 @@ for (const provider of cliArguments.providers) {
   }
 }
 
+const OUT_DIR = path.join(import.meta.dirname, "..", "out");
+await mkdir(OUT_DIR, { recursive: true });
+const database = new Database(
+  path.join(OUT_DIR, `${new Date().toISOString()}.sqlite`),
+);
+
 for (const provider of providers) {
   let mediaList;
   try {
@@ -84,12 +90,6 @@ for (const provider of providers) {
       `[--test-titles] Only checking ${mediaList.map((media) => media.providerTitle).join(", ")}`,
     );
   }
-
-  const OUT_DIR = path.join(import.meta.dirname, "..", "out");
-  await mkdir(OUT_DIR, { recursive: true });
-  const database = new Database(
-    path.join(OUT_DIR, `${provider.name}_${new Date().toISOString()}.sqlite`),
-  );
 
   // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
   // the future
@@ -142,7 +142,7 @@ for (const provider of providers) {
       );
     }
   }
-
-  database.close();
-  console.log(`Wrote all results, sorted by score, to ${database.path}`);
 }
+
+database.close();
+console.log(`Wrote all results, sorted by score, to ${database.path}`);
