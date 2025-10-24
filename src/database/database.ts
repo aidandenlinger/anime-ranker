@@ -220,14 +220,27 @@ export class Database {
   }
 
   /**
+   * NOTE: You could avoid calling this function manually
+   * by using explicit resource management instead:
+   * `using database = new Database(...)` will automatically close
+   * the database at the end of its scope.
+   *
    * Closes the connection to the database.
-   * This object is unusable after this is called.
-   * Should be called when done with the database!
+   * This should be called if resource management wasn't used and you're
+   * done with the database!
+   * The database is unusable after this is called.
    */
   close() {
     if (this.#conn.isOpen) {
       this.#conn.close();
     }
+  }
+
+  /**
+   * Closes the connection to the database when done.
+   */
+  [Symbol.dispose]() {
+    this.close();
   }
 }
 

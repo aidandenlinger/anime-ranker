@@ -148,6 +148,9 @@ suite("Database testing", () => {
   });
 
   afterEach(() => {
+    // NOTE: You can avoid having to close the database manually
+    // via explicit resource management:
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Resource_management#the_using_and_await_using_declarations
     database.close();
   });
 });
