@@ -1,5 +1,6 @@
 import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
+import { ShonenJump, VizManga } from "./providers/viz.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
 import { Hulu } from "./providers/hulu.ts";
@@ -22,6 +23,14 @@ for (const provider of cliArguments.providers) {
   switch (provider) {
     case "Hulu": {
       providers.push(new Hulu());
+      break;
+    }
+    case "ShonenJump": {
+      providers.push(new ShonenJump());
+      break;
+    }
+    case "VizManga": {
+      providers.push(new VizManga());
       break;
     }
     case "Netflix": {
@@ -113,7 +122,7 @@ for (const provider of providers) {
   }
   console.log(); // newline
 
-  console.log(`On ${provider.name}, you should watch:`);
+  console.log(`On ${provider.name}, you should check out:`);
   for (const media of database.getAll({
     score: { minimumScore: SCORE_THRESHOLD },
     provider: provider.name,

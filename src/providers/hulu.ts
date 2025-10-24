@@ -1,4 +1,4 @@
-import type { Media, Provider, Providers } from "./provider.ts";
+import type { Media, Provider } from "./provider.ts";
 import { fromURL } from "cheerio";
 import z from "zod";
 
@@ -7,7 +7,7 @@ import z from "zod";
  */
 export class Hulu implements Provider {
   /** Human-readable identifier for the provider */
-  name: Providers = "Hulu";
+  name = "Hulu" as const;
 
   // Of note - they actually have separate pages for TV and movies.
   // - https://www.hulu.com/sitemap/genres/anime-movies
@@ -34,7 +34,7 @@ export class Hulu implements Provider {
         },
       });
     } catch (error) {
-      throw new Error("[Hulu] Request not okay", { cause: error });
+      throw new Error(`[${this.name}] Request not okay`, { cause: error });
     }
 
     const titles = $("div .ListCardItem")

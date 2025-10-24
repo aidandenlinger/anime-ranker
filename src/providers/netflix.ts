@@ -1,4 +1,4 @@
-import type { Media, Provider, Providers } from "./provider.ts";
+import type { Media, Provider } from "./provider.ts";
 import pThrottle from "p-throttle";
 import z from "zod";
 
@@ -20,7 +20,7 @@ type NetflixCookies = z.infer<typeof netflixCookiesSchema>;
  */
 export class Netflix implements Provider {
   /** Human-readable name for the provider. */
-  name: Providers = "Netflix";
+  name = "Netflix" as const;
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
   /** A Netflix API to query for titles. */
@@ -117,7 +117,7 @@ export class Netflix implements Provider {
     if (!response.ok) {
       const UNAUTHORIZED_ERROR_RESPONSE = 401;
       throw new Error(
-        `[Netflix] Request not okay: ${response.status.toString()} ${response.statusText} ${response.status === UNAUTHORIZED_ERROR_RESPONSE ? "(Are your cookies valid?)" : ""}`,
+        `[${this.name}] Request not okay: ${response.status.toString()} ${response.statusText} ${response.status === UNAUTHORIZED_ERROR_RESPONSE ? "(Are your cookies valid?)" : ""}`,
       );
     }
 

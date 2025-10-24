@@ -1,7 +1,7 @@
 /**
  * An array of all supported providers, for access at runtime.
  */
-export const providers = ["Hulu", "Netflix"] as const;
+export const providers = ["Hulu", "Netflix", "ShonenJump", "VizManga"] as const;
 
 /**
  * All supported providers.

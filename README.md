@@ -32,6 +32,11 @@ Without any arguments, the script will query each provider with a small library 
 - [Hulu]
 - [Netflix] ([requires authorization](./docs/NETFLIX.md))
 
+#### Manga
+
+- [ShonenJump]
+- [VizManga]
+
 ### Known Issues
 
 - Hulu's output includes "HBO Max on Hulu" shows/movies. If you do not have the "HBO Max" add-on,
@@ -62,3 +67,5 @@ MIT
 [rate limit]: https://docs.anilist.co/guide/rate-limiting
 [Hulu]: https://hulu.com
 [Netflix]: https://netflix.com
+[ShonenJump]: https://www.viz.com/manga-books/shonenjump/section/free-chapters
+[VizManga]: https://www.viz.com/manga-books/vizmanga/section/free-chapters
