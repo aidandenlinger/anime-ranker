@@ -5,6 +5,15 @@ import { titleSimilarity } from "./string-comp.ts";
 import z from "zod";
 
 /**
+ * How many results each anilist request should contain. Useful when a series
+ * also contains movies.
+ *
+ * For example, "The Rose of Versailles" has a TV show *and* a movie. By getting
+ * multiple results in one query, we can filter down to the one we want.
+ */
+const DEFAULT_RESULTS_PER_SEARCH = 3;
+
+/**
  * Gets rankings from {@link https://anilist.co|Anilist}.
  */
 export class Anilist implements Ranker {
@@ -15,21 +24,30 @@ export class Anilist implements Ranker {
   api = new URL("https://graphql.anilist.co");
 
   /**
-   * How many results each anilist request should contain. Useful when a series
-   * also contains movies.
-   *
-   * For example, "The Rose of Versailles" has a TV show *and* a movie. Rather
-   * than sending multiple requests to find the right format type, we can ask
-   * for `this.#resultsPerSearch` and use the first one that has an acceptable
-   * media type.
+   * @param type The type of the media, to determine if we're searching for Anime or Manga
+   * @param numberOfResults An optional number of results to return, defaults to {@link DEFAULT_RESULTS_PER_SEARCH}
+   * @returns A GraphQL query to retrieve rankings from Anilist
    */
-  readonly #resultsPerSearch = 3;
+  readonly #graphqlQuery = (
+    type: Media["type"],
+    numberOfResults = DEFAULT_RESULTS_PER_SEARCH,
+  ) => {
+    let queryType: "ANIME" | "MANGA";
+    switch (type) {
+      case "TV":
+      case "MOVIE": {
+        queryType = "ANIME";
+        break;
+      }
+      case "MANGA": {
+        queryType = "MANGA";
+        break;
+      }
+    }
 
-  /** The query to retrieve titles/scores/etc from anilist. */
-  // NOTE: the type parameter determines between ANIME or MANGA, so we explicitly set it to ANIME here. We'll use the `format` field to filter between movies and TV shows.
-  readonly #graphqlQuery = `query getRanking($search: String!) {
-      Page(perPage: ${this.#resultsPerSearch.toString()}) {
-        media(search: $search, type: ANIME) {
+    return `query getRanking($search: String!) {
+      Page(perPage: ${numberOfResults.toString()}) {
+        media(search: $search, type: ${queryType}) {
           averageScore
           title {
             english
@@ -42,6 +60,7 @@ export class Anilist implements Ranker {
       }
     }
     ` as const;
+  };
 
   /**
    * Given an anime title, return its average score on anilist.
@@ -51,14 +70,15 @@ export class Anilist implements Ranker {
   async getRanking(media: Media) {
     const cleanedTitle = this.#cleanTitle(media.providerTitle, media.provider);
 
-    const results = await this.#parsedRequest(cleanedTitle).then((result) =>
-      result.filter(
-        ([_rank, metadata]) =>
-          // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
-          metadata.format !== undefined &&
-          // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
-          acceptedMediaFormats[media.type].includes(metadata.format),
-      ),
+    const results = await this.#parsedRequest(cleanedTitle, media.type).then(
+      (result) =>
+        result.filter(
+          ([_rank, metadata]) =>
+            // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
+            metadata.format !== undefined &&
+            // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
+            acceptedMediaFormats[media.type].includes(metadata.format),
+        ),
     );
 
     const titleIsIn = (possibleTitles: string[]) =>
@@ -91,13 +111,14 @@ export class Anilist implements Ranker {
    * Only allow one request to anilist every 2 seconds. See the
    * {@link https://docs.anilist.co/guide/rate-limiting|Anilist rate limit docs}.
    * @param search The anime to search for
+   * @param type The type of media we're searching for
    * @returns A raw response with `this.#resultsPerSearch` anime matching the query
    */
   readonly #throttledRequest = pThrottle({
     limit: 1, // To not overwhelm
     interval: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
     /* eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle */
-  })((title: string) =>
+  })((title: string, type: Media["type"]) =>
     fetch(this.api, {
       method: "POST",
       headers: {
@@ -105,7 +126,7 @@ export class Anilist implements Ranker {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        query: this.#graphqlQuery,
+        query: this.#graphqlQuery(type),
         variables: { search: title },
       }),
     }),
@@ -114,13 +135,14 @@ export class Anilist implements Ranker {
   /**
    * Request anilist data for a title and parse it.
    * @param title The title to search for
+   * @param type The type of media we're searching for
    * @returns Data for each show
    * @throws {z.ZodError} if HTML request fails (often due to invalid cookies) or response isn't in expected shape
    */
-  async #parsedRequest(title: string) {
+  async #parsedRequest(title: string, type: Media["type"]) {
     let request;
     do {
-      request = await this.#throttledRequest(title);
+      request = await this.#throttledRequest(title, type);
 
       if (!request.ok) {
         const sleepSec = Number(request.headers.get("Retry-After") ?? "2");
