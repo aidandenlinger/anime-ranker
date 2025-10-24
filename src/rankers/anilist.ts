@@ -18,10 +18,10 @@ const DEFAULT_RESULTS_PER_SEARCH = 3;
  */
 export class Anilist implements Ranker {
   /** Human readable name for the ranker. */
-  name = "Anilist" as const;
+  readonly name = "Anilist" as const;
 
   /** API to query - {@link https://docs.anilist.co|docs here}. */
-  api = new URL("https://graphql.anilist.co");
+  readonly api = new URL("https://graphql.anilist.co");
 
   /**
    * @param type The type of the media, to determine if we're searching for Anime or Manga

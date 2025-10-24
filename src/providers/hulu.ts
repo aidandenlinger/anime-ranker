@@ -7,7 +7,7 @@ import z from "zod";
  */
 export class Hulu implements Provider {
   /** Human-readable identifier for the provider */
-  name = "Hulu" as const;
+  readonly name = "Hulu" as const;
 
   // Of note - they actually have separate pages for TV and movies.
   // - https://www.hulu.com/sitemap/genres/anime-movies
@@ -16,7 +16,7 @@ export class Hulu implements Provider {
   // good to have the option if I decide to refactor
   // Another note - they maintain a list of what's being added/removed every month at https://press.hulu.com/schedule/
   /** Not *really* an api - an html page we parse to get all titles. */
-  api = new URL("https://www.hulu.com/sitemap/genres/anime");
+  readonly api = new URL("https://www.hulu.com/sitemap/genres/anime");
 
   /**
    * @returns a list of all anime on Hulu.

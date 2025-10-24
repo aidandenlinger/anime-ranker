@@ -20,11 +20,11 @@ type NetflixCookies = z.infer<typeof netflixCookiesSchema>;
  */
 export class Netflix implements Provider {
   /** Human-readable name for the provider. */
-  name = "Netflix" as const;
+  readonly name = "Netflix" as const;
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
   /** A Netflix API to query for titles. */
-  api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
+  readonly api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
 
   /** The genre code for anime on netflix - https://netflix.com/browse/genre/7424 */
   // It doesn't get *everything* (ie Den-noh Coil) but it gets the vast

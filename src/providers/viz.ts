@@ -75,7 +75,7 @@ export class ShonenJump implements Provider {
   );
 
   /** Gets all titles from Shonen Jump */
-  getMedia = vizGetMedia(this.name, this.api);
+  readonly getMedia = vizGetMedia(this.name, this.api);
 }
 
 /**
@@ -91,5 +91,5 @@ export class VizManga implements Provider {
   );
 
   /** Gets all titles from Viz Manga */
-  getMedia = vizGetMedia(this.name, this.api);
+  readonly getMedia = vizGetMedia(this.name, this.api);
 }
