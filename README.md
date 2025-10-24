@@ -6,13 +6,7 @@ Note that this script is imperfect, and is (at the time of writing) in active de
 
 ## Install
 
-### Javascript Dependencies
-
 This project uses [`pnpm`] and [`node`]. The specific versions used are tracked in [`mise.toml`](./mise.toml). You can automatically install these versions with [`mise`], or manually install them yourself.
-
-### SQLite
-
-This project uses [`sqlite3`] to store its data. This comes preinstalled (or is available) on the vast majority of Linux distributions and macOS. It will need to be installed on Windows, or you can use [Windows Subsystem for Linux][WSL] to access a Linux environment on Windows.
 
 ## Usage
 
