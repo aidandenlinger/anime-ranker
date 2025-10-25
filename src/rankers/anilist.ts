@@ -108,6 +108,9 @@ export class Anilist implements Ranker {
     return match[0];
   }
 
+  /** We're allowed to make 30 req per 60 seconds -> 1 req every 2 seconds -> 1 req every 2000 ms */
+  readonly #requestInvervalMs = 2000;
+
   /**
    * Only allow one request to anilist every 2 seconds. See the
    * {@link https://docs.anilist.co/guide/rate-limiting|Anilist rate limit docs}.
@@ -117,7 +120,7 @@ export class Anilist implements Ranker {
    */
   readonly #throttledRequest = pThrottle({
     limit: 1, // To not overwhelm
-    interval: 2000, // 30 req per 60 seconds -> 1 req every 2 seconds
+    interval: this.#requestInvervalMs,
     /* eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle */
   })((title: string, type: Media["type"]) =>
     fetch(this.api, {
@@ -146,11 +149,17 @@ export class Anilist implements Ranker {
       request = await this.#throttledRequest(title, type);
 
       if (!request.ok) {
-        const sleepSec = Number(request.headers.get("Retry-After") ?? "2");
-        console.log(
-          `[Anilist] Request failed, likely rate limited, sleeping for ${sleepSec.toString()} seconds`,
-        );
         const SEC_TO_MS = 1000;
+        const MS_TO_SEC = 1 / SEC_TO_MS;
+
+        const retryAfterSec = request.headers.get("Retry-After");
+        /** If we don't get a Retry-After, do the default pause between requests */
+        const sleepSec = retryAfterSec
+          ? Number(retryAfterSec)
+          : this.#requestInvervalMs * MS_TO_SEC;
+        console.log(
+          `\n[${this.name}] Request failed, likely rate limited, sleeping for ${sleepSec.toString()} seconds`,
+        );
         await new Promise((f) => setTimeout(f, sleepSec * SEC_TO_MS));
       }
     } while (!request.ok);
