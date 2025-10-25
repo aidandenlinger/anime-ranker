@@ -1,3 +1,5 @@
+// eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
+import { DatabaseSync, type SQLTagStore } from "node:sqlite";
 import {
   type MaybeRankedMedia,
   type RankedMedia,
@@ -5,8 +7,6 @@ import {
   maybeRankedMediaSchema,
 } from "./media-schema.ts";
 import { P, match } from "ts-pattern";
-// eslint-disable-next-line n/no-unsupported-features/node-builtins -- I'm actively choosing to use this experimental feature to avoid a dependency
-import { DatabaseSync } from "node:sqlite";
 import type { Providers } from "../providers/provider.ts";
 import assert from "node:assert/strict";
 
@@ -17,12 +17,12 @@ export class Database {
   /** The filepath of this database. */
   readonly path: string;
 
-  /** Our connection to the database which actually lets us read/write. */
-  readonly #conn: DatabaseSync;
+  /** Our interface to perform SQL queries. */
+  readonly #sql: SQLTagStore;
 
-  // TODO: when @types/node updates, migrate to using SQLTagStore and set minimum node version to 24.9
-  /** A cache of our prepared statements, to allow for efficent reuse. */
-  readonly #preparedStatements;
+  // TODO: follow the outcome of https://github.com/nodejs/node/issues/60448, I may get to delete this
+  /** Our SQL database. */
+  readonly #db: DatabaseSync;
 
   /**
    * @param databasePath A filepath to write a new or load an old database,
@@ -30,54 +30,55 @@ export class Database {
    */
   constructor(databasePath: string) {
     this.path = databasePath;
-    this.#conn = new DatabaseSync(databasePath);
-    this.#conn.exec(createRankedMediaTable);
-    // Compile our statements ahead of time
-    this.#preparedStatements = {
-      insert: this.#conn.prepare(this.#insertStatement),
-      getAll: this.#conn.prepare(this.#getAll),
-      getAllProvider: this.#conn.prepare(this.#getAllProvider),
-      getAllProviderNoScore: this.#conn.prepare(this.#getAllProviderNoScore),
-      getAllNoScore: this.#conn.prepare(this.#getAllNoScore),
-      getAllMinimumScore: this.#conn.prepare(this.#getAllMinimumScore),
-      getAllProviderMininimumScore: this.#conn.prepare(
-        this.#getAllProviderMinimumScore,
-      ),
-    };
-  }
+    // eslint-disable-next-line n/no-sync -- there is no async sqlite3 library at the moment
+    this.#db = new DatabaseSync(databasePath);
+    this.#sql = this.#db.createTagStore();
 
-  /** SQL statement to insert a given RankedVideo into the SQL database. */
-  readonly #insertStatement = `
-    INSERT INTO Ranks (
-        providerTitle,
-        type,
-        providerURL,
-        provider,
-        rankerTitle,
-        rankerURL,
-        score,
-        ranker,
-        lastUpdated
-    )
-    VALUES (
-        :providerTitle,
-        :type,
-        :providerURL,
-        :provider,
-        :rankerTitle,
-        :rankerURL,
-        :score,
-        :ranker,
-        :lastUpdated
-    )
-  `;
+    this.#db.exec(createRankedMediaTable);
+  }
 
   /**
    * @param media Video to add to the database
    * @throws {Error} if media with the same providerTitle and provider is in the database
    */
   insert(media: MaybeRankedMedia) {
-    this.#preparedStatements.insert.run(maybeRankedMediaSchema.encode(media));
+    const {
+      providerTitle,
+      type,
+      providerURL,
+      provider,
+      rankerTitle,
+      rankerURL,
+      score,
+      ranker,
+      lastUpdated,
+    } = maybeRankedMediaSchema.encode(media);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- we don't care to learn about the resulting changes here
+    this.#sql.run`
+      INSERT INTO Ranks (
+          providerTitle,
+          type,
+          providerURL,
+          provider,
+          rankerTitle,
+          rankerURL,
+          score,
+          ranker,
+          lastUpdated
+      )
+      VALUES (
+          ${providerTitle},
+          ${type},
+          ${providerURL},
+          ${provider},
+          ${rankerTitle},
+          ${rankerURL},
+          ${score},
+          ${ranker},
+          ${lastUpdated}
+      )
+    `;
   }
 
   /**
@@ -86,57 +87,12 @@ export class Database {
    * @throws {Error} if media with the same providerTitle and provider is in the database
    */
   insertMany(mediaList: MaybeRankedMedia[]) {
-    this.#conn.exec("BEGIN TRANSACTION");
+    this.#db.exec("BEGIN TRANSACTION");
     for (const media of mediaList) {
       this.insert(media);
     }
-    this.#conn.exec("COMMIT");
+    this.#db.exec("COMMIT");
   }
-
-  /** SQL statement to get all rankings from the SQL database. */
-  readonly #getAll = `
-    SELECT * FROM Ranks
-    ORDER BY score DESC, providerTitle ASC
-  `;
-
-  /** SQL statement to get all rankings from a certain provider. */
-  readonly #getAllProvider = `
-    SELECT * FROM Ranks
-    WHERE provider = :provider
-    ORDER BY score DESC, providerTitle ASC
-  `;
-
-  /** SQL statement to get all entries for a provider without a score */
-  readonly #getAllProviderNoScore = `
-    SELECT * FROM Ranks
-    WHERE
-        provider = :provider
-        AND score IS NULL
-    ORDER BY score DESC, providerTitle ASC
-  `;
-
-  /** SQL statement to get all rankings with a minimum score. */
-  readonly #getAllMinimumScore = `
-    SELECT * FROM Ranks
-    WHERE score >= :minimumScore
-    ORDER BY score DESC, providerTitle ASC
-  `;
-
-  /** SQL statement to get all entries lacking a score. */
-  readonly #getAllNoScore = `
-    SELECT * FROM Ranks
-    WHERE score IS NULL
-    ORDER BY score DESC, providerTitle ASC
-  `;
-
-  /** SQL statement to get all rankings with a certain provider and a minimum score. */
-  readonly #getAllProviderMinimumScore = `
-    SELECT * FROM Ranks
-    WHERE
-        provider = :provider
-        AND score >= :minimumScore
-    ORDER BY score DESC, providerTitle ASC
-  `;
 
   /**
    * Get all with a minimum score defined - score cannot be undefined.
@@ -169,33 +125,62 @@ export class Database {
    */
   getAll(options?: GetAllOptions) {
     const results = match([options?.provider, options?.score])
-      .with([undefined, undefined], () => this.#preparedStatements.getAll.all())
-      .with([P.nonNullable.select(), undefined], (provider) =>
-        this.#preparedStatements.getAllProvider.all({ provider }),
+      .with(
+        [undefined, undefined],
+        () =>
+          this.#sql.all`
+            SELECT * FROM Ranks
+            ORDER BY score DESC, providerTitle ASC
+          `,
+      )
+      .with(
+        [P.nonNullable.select(), undefined],
+        (provider) =>
+          this.#sql.all`
+            SELECT * FROM Ranks
+            WHERE provider = ${provider}
+            ORDER BY score DESC, providerTitle ASC
+          `,
       )
       .with(
         [undefined, P.union(true, { minimumScore: P.nonNullable.select() })],
         (minimumScore) =>
-          this.#preparedStatements.getAllMinimumScore.all({
-            minimumScore: minimumScore ?? 0,
-          }),
+          this.#sql.all`
+            SELECT * FROM Ranks
+            WHERE score >= ${minimumScore ?? 0}
+            ORDER BY score DESC, providerTitle ASC
+          `,
       )
-      .with([undefined, false], () =>
-        this.#preparedStatements.getAllNoScore.all(),
+      .with(
+        [undefined, false],
+        () =>
+          this.#sql.all`
+          SELECT * FROM Ranks
+          WHERE score IS NULL
+          ORDER BY score DESC, providerTitle ASC
+        `,
       )
-      .with([P.nonNullable.select(), false], (provider) =>
-        this.#preparedStatements.getAllProviderNoScore.all({
-          provider,
-        }),
+      .with(
+        [P.nonNullable.select(), false],
+        (provider) =>
+          this.#sql.all`
+            SELECT * FROM Ranks
+            WHERE
+                provider = ${provider}
+                AND score IS NULL
+            ORDER BY score DESC, providerTitle ASC
+          `,
       )
       .with(
         [P.nonNullable, P.union(true, { minimumScore: P.nonNullable })],
         ([provider, scoreOptions]) =>
-          this.#preparedStatements.getAllProviderMininimumScore.all({
-            provider,
-            minimumScore:
-              typeof scoreOptions === "boolean" ? 0 : scoreOptions.minimumScore,
-          }),
+          this.#sql.all`
+            SELECT * FROM Ranks
+            WHERE
+                provider = ${provider}
+                AND score >= ${typeof scoreOptions === "boolean" ? 0 : scoreOptions.minimumScore}
+            ORDER BY score DESC, providerTitle ASC
+          `,
       )
       .exhaustive()
       .map((result) => maybeRankedMediaSchema.parse(result));
@@ -231,8 +216,8 @@ export class Database {
    * The database is unusable after this is called.
    */
   close() {
-    if (this.#conn.isOpen) {
-      this.#conn.close();
+    if (this.#db.isOpen) {
+      this.#db.close();
     }
   }
 

@@ -1,3 +1,5 @@
 [tools]
+# Note: this should really be ">=24.9 <25", but I don't think I can express that with Mise
+# This code uses SQLTagStore which was introduced in 24.9 and isn't stable yet - https://nodejs.org/docs/latest-v24.x/api/sqlite.html#class-sqltagstore
 node = "24"
 pnpm = "10"
