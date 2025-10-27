@@ -71,41 +71,51 @@ export class Anilist implements Ranker {
   async getRanking(media: Media) {
     const cleanedTitle = this.#cleanTitle(media.providerTitle, media.provider);
 
-    const results = await this.#parsedRequest(cleanedTitle, media.type).then(
-      (result) =>
-        result.filter(
-          ([_rank, metadata]) =>
-            // If format is undefined, this show hasn't aired yet and cannot be on a streaming service yet
-            metadata.format !== undefined &&
-            // Try to ensure it's the right type of media - ie if we're searching for a movie, don't pull up a TV show
-            acceptedMediaFormats[media.type].includes(metadata.format),
-        ),
+    let results = await this.#parsedRequest(cleanedTitle, media.type);
+
+    // Filter results by media format - ie if we're searching for a movie, take out all TV shows
+    results = results.filter(
+      ([_rank, metadata]) =>
+        // If format is undefined, this is unreleased media where it's hasn't been announced what format it is
+        // Since it's unreleased, there is zero possibility it's on a streaming service :)
+        metadata.format !== undefined &&
+        acceptedMediaFormats[media.type].includes(metadata.format),
     );
 
-    const titleIsIn = (possibleTitles: string[]) =>
+    const providerTitleIsIn = (possibleTitles: string[]) =>
       possibleTitles.some(
         (anilistTitle) =>
           titleSimilarity(anilistTitle, cleanedTitle) === "similar",
       );
 
-    // Two searches - see if any of our titles are in the official titles, and if no matches see if
-    // they're in the *synonyms* of any entries. Why not do synonyms in the first search? Synonyms
-    // seem to be less regulated, ie https://anilist.co/anime/154178 is a set of shorts yet it has
-    // the main show's title in its synonyms so it'd match first. Why consider synonyms at all? Hulu
-    // uses a synonym for this show - https://anilist.co/anime/158028
-    const match =
+    // Two searches:
+    // - see if the provider title is in the official media titles. This isn't always the case,
+    //   namely when a streaming service has a non-anime labeled as anime. In this case, the
+    //   show won't be on Anilist. Anilist will return their closest matches, but these should be
+    //   relatively exact searches - in this case where no titles are above a high threshold of
+    //   similarity, I want to say no match. See `src/rankers/string-comp.test.ts` for some example
+    //   cases.
+    // - if no matches on official titles, see if the title in the *synonyms* of any entries.
+    //   Why not do synonyms in the first search? Synonyms seem to be less regulated, ie
+    //   https://anilist.co/anime/154178 is a set of shorts yet it has the main show's title
+    //   in its synonyms, so it'd match first if we gave them equal rank, so prefer official
+    //   title matches first. Why consider synonyms at all? Hulu uses a synonym for this show:
+    //   https://anilist.co/anime/158028
+    const bestMatch =
       results.find(([_rank, metadata]) =>
-        // Ensure that the titles anilist found are close enough to the provider title.
-        // Sometimes anilist returns some absolute nonmatches - see the title_similarity test cases for examples we're trying to reject
-        titleIsIn(metadata.allTitles),
+        providerTitleIsIn(metadata.allTitles),
       ) ??
-      results.find(([_rank, metadata]) => titleIsIn(metadata.titleSynonyms));
+      results.find(([_rank, metadata]) =>
+        providerTitleIsIn(metadata.titleSynonyms),
+      );
 
-    if (!match) {
+    if (!bestMatch) {
       return;
     }
 
-    return match[0];
+    // We store a [rank, metadata] pair - return the final rank, discarding the
+    // metadata which we only needed for the filtering above
+    return bestMatch[0];
   }
 
   /** We're allowed to make 30 req per 60 seconds -> 1 req every 2 seconds -> 1 req every 2000 ms */
