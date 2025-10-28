@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS Ranks (
   provider TEXT NOT NULL,
   rankerTitle TEXT,
   rankerURL TEXT,
-  score NUMBER,
+  score INTEGER,
   ranker TEXT,
   lastUpdated TEXT NOT NULL,
   PRIMARY KEY (provider, providerTitle)
