@@ -1,11 +1,17 @@
 import type { Media } from "../providers/provider.ts";
 
+/** An array of all supported rankers, for runtime validation. */
+export const rankers = ["Anilist"] as const;
+
+/** All supported rankers. */
+export type Rankers = (typeof rankers)[number];
+
 /**
  * A service that ranks media.
  */
 export type Ranker = Readonly<{
   /** A user-friendly name of the ranker. */
-  name: "Anilist";
+  name: Rankers;
   /** The URL used to access the ranker's data. */
   api: URL;
   /** @returns the ranking, if possible, from the given Video. */
@@ -15,14 +21,16 @@ export type Ranker = Readonly<{
 /**
  * The ranking of an anime.
  */
-export type Rank = Readonly<{
+export type Rank<Ranker extends Rankers = Rankers> = Readonly<{
   /**
    * English title of the media on the ranker.
    * If there is no English title, this should be romaji.
    */
   rankerTitle: string;
+
   /** URL to the media on the ranker. */
   rankerURL: URL;
+
   /**
    * The average score of the media on anilist - a weighted average out of
    * 100, accounting for the number of people who reviewed it. See
@@ -33,6 +41,13 @@ export type Rank = Readonly<{
    * doesn't have a ranking yet.
    */
   score?: number | undefined;
+
   /** Name of the ranker. */
-  ranker: Ranker["name"];
+  ranker: Rankers;
+
+  /** The time this ranking was retrieved. */
+  lastUpdated: Date;
+
+  /** A unique identifier for a rank within a Ranker. */
+  rankId: `${Ranker}:${string}`;
 }>;

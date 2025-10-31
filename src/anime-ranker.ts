@@ -110,31 +110,30 @@ for (const provider of providers) {
 
   for (const media of mediaList) {
     progressBar.update({ title: media.providerTitle });
-    const ranking = await ranker.getRanking(media);
+    const rank = await ranker.getRanking(media);
 
     progressBar.increment();
 
     database.insert({
       ...media,
-      ...ranking,
-      lastUpdated: new Date(),
+      ...rank,
     });
   }
   console.log(); // newline
 
   console.log(`On ${provider.name}, you should check out:`);
   for (const media of database.getAll({
-    score: { minimumScore: SCORE_THRESHOLD },
+    rank: { minimumScore: SCORE_THRESHOLD },
     provider: provider.name,
   })) {
     console.log(`- ${media.providerTitle} (${media.score.toString()})`);
   }
   console.log(); // newline
 
-  const noScore = database.getAll({ score: false, provider: provider.name });
-  if (noScore.length > 0) {
+  const noRank = database.getAll({ rank: false, provider: provider.name });
+  if (noRank.length > 0) {
     console.warn(
-      `Anilist couldn't find a score for ${noScore.map((t) => t.providerTitle).join(", ")}`,
+      `Anilist couldn't find a ranking for ${noRank.map((t) => t.providerTitle).join(", ")}`,
     );
     if (provider.name === "Netflix") {
       console.warn(

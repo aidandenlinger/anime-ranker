@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file-if-exists .env src/anime-ranker.ts",
-    "ci": "tsc && eslint && node --test && prettier --check ."
+    "ci": "tsc && node --test && eslint && prettier --check ."
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",

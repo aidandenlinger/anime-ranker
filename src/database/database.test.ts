@@ -1,4 +1,4 @@
-import type { MaybeRankedMedia, RankedMedia } from "./media-schema.ts";
+import type { MaybeRankedMedia, ScoredMedia } from "./media-schema.ts";
 import {
   type TestContext,
   afterEach,
@@ -64,6 +64,23 @@ suite("Database testing", () => {
     t.assert.throws(() => {
       database.insert(undefinedScore);
     });
+
+    // We can add rank85 again, on a different provider, and it will use the same ranking entry that's already in the DB
+    database.insert(rank85StartsWithGOnNetflix);
+    t.assert.deepStrictEqual(database.getAll(), [
+      rank85StartsWithG,
+      rank85StartsWithGOnNetflix,
+      rank82StartsWithS,
+      rank79StartsWithO,
+      rank79StartsWithR,
+      undefinedScore,
+      noRank,
+    ]);
+
+    // We can't add a show without an existing ranking
+    t.assert.throws(() => {
+      database.insert(pointingToInvalidRank);
+    });
   });
 
   test("Filtering listed rankings", (t: TestContext) => {
@@ -90,22 +107,26 @@ suite("Database testing", () => {
     // Score only:
     t.assert.ok(
       database
-        .getAll({ score: { minimumScore: 80 } })
+        .getAll({ rank: { minimumScore: 80 } })
         .every((r) => r.score !== undefined && r.score >= 80),
     );
 
     t.assert.ok(
-      database.getAll({ score: true }).every((r) => r.score !== undefined),
+      database.getAll({ rank: true }).every((r) => r.score !== undefined),
     );
 
     t.assert.ok(
-      database.getAll({ score: false }).every((r) => r.score === undefined),
+      database.getAll({ rank: false }).every(
+        (r) =>
+          // @ts-expect-error -- our types declare that there shouldn't be a score here, we want to make sure
+          r.score === undefined,
+      ),
     );
 
     // Provider and score:
     t.assert.ok(
       database
-        .getAll({ score: { minimumScore: 80 }, provider: "Hulu" })
+        .getAll({ rank: { minimumScore: 80 }, provider: "Hulu" })
         .every(
           (r) =>
             r.score !== undefined && r.score >= 80 && r.provider === "Hulu",
@@ -114,19 +135,21 @@ suite("Database testing", () => {
 
     t.assert.ok(
       database
-        .getAll({ score: true, provider: "Hulu" })
+        .getAll({ rank: true, provider: "Hulu" })
         .every((r) => r.score !== undefined && r.provider === "Hulu"),
     );
 
     t.assert.ok(
-      database
-        .getAll({ score: false, provider: "Hulu" })
-        .every((r) => r.score === undefined && r.provider === "Hulu"),
+      database.getAll({ rank: false, provider: "Hulu" }).every(
+        (r) =>
+          // @ts-expect-error -- our types declare that there shouldn't be a score here, we want to make sure
+          r.score === undefined && r.provider === "Hulu",
+      ),
     );
 
     t.assert.ok(
       database
-        .getAll({ score: { minimumScore: 80 }, provider: "Netflix" })
+        .getAll({ rank: { minimumScore: 80 }, provider: "Netflix" })
         .every(
           (r) =>
             r.score !== undefined && r.score >= 80 && r.provider === "Netflix",
@@ -135,14 +158,16 @@ suite("Database testing", () => {
 
     t.assert.ok(
       database
-        .getAll({ score: true, provider: "Netflix" })
+        .getAll({ rank: true, provider: "Netflix" })
         .every((r) => r.score !== undefined && r.provider === "Netflix"),
     );
 
     t.assert.ok(
-      database
-        .getAll({ score: false, provider: "Netflix" })
-        .every((r) => r.score === undefined && r.provider === "Netflix"),
+      database.getAll({ rank: false, provider: "Netflix" }).every(
+        (r) =>
+          // @ts-expect-error -- our types declare that there shouldn't be a score here, we want to make sure
+          r.score === undefined && r.provider === "Netflix",
+      ),
     );
     /* eslint-enable @typescript-eslint/no-unnecessary-condition -- we are done with the filter tests */
   });
@@ -157,7 +182,7 @@ suite("Database testing", () => {
 
 // Test data
 
-const rank85StartsWithG: RankedMedia = {
+const rank85StartsWithG: ScoredMedia = {
   providerTitle: "Gurren Lagann",
   providerURL: new URL(
     "https://hulu.com/series/gurren-lagann-6ea27f41-e422-4c58-8e06-9ad1602903b7",
@@ -169,9 +194,23 @@ const rank85StartsWithG: RankedMedia = {
   rankerURL: new URL("https://anilist.co/anime/2001"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
+  rankId: "Anilist:2001",
 };
 
-const rank82StartsWithS: RankedMedia = {
+const rank85StartsWithGOnNetflix: ScoredMedia = {
+  providerTitle: "Gurren Lagann",
+  providerURL: new URL("https://www.netflix.com/title/70213196"),
+  type: "TV",
+  provider: "Netflix",
+  score: 85,
+  rankerTitle: "Gurren Lagann",
+  rankerURL: new URL("https://anilist.co/anime/2001"),
+  ranker: "Anilist",
+  lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
+  rankId: "Anilist:2001",
+};
+
+const rank82StartsWithS: ScoredMedia = {
   providerTitle: "Suzume",
   providerURL: new URL("https://netflix.com/title/81696498"),
   type: "MOVIE",
@@ -181,9 +220,10 @@ const rank82StartsWithS: RankedMedia = {
   rankerURL: new URL("https://anilist.co/anime/142770"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:29:15.192Z"),
+  rankId: "Anilist:142770",
 };
 
-const rank79StartsWithO: RankedMedia = {
+const rank79StartsWithO: ScoredMedia = {
   providerTitle: "One Piece Film Z",
   providerURL: new URL("https://netflix.com/title/80198443"),
   type: "MOVIE",
@@ -193,9 +233,10 @@ const rank79StartsWithO: RankedMedia = {
   rankerURL: new URL("https://anilist.co/anime/12859"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:29:41.304Z"),
+  rankId: "Anilist:80198443",
 };
 
-const rank79StartsWithR: RankedMedia = {
+const rank79StartsWithR: ScoredMedia = {
   providerTitle: "Romantic Killer",
   providerURL: new URL("https://netflix.com/title/81318888"),
   type: "TV",
@@ -205,9 +246,10 @@ const rank79StartsWithR: RankedMedia = {
   rankerURL: new URL("https://anilist.co/anime/153930"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:15:32.534Z"),
+  rankId: "Anilist:81318888",
 };
 
-const undefinedScore: RankedMedia = {
+const undefinedScore: MaybeRankedMedia = {
   providerTitle: "Digimon Beatbreak",
   providerURL: new URL(
     "https://hulu.com/series/digimon-beatbreak-4c47f9ab-f6b8-45ec-8fb9-fbd5ed1a5529",
@@ -219,6 +261,7 @@ const undefinedScore: RankedMedia = {
   rankerURL: new URL("https://anilist.co/anime/188388"),
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:28:27.684Z"),
+  rankId: "Anilist:188388",
 };
 
 const noRank: MaybeRankedMedia = {
@@ -228,9 +271,19 @@ const noRank: MaybeRankedMedia = {
   ),
   type: "TV",
   provider: "Hulu",
-  lastUpdated: new Date("2025-10-18T05:59:27.684Z"),
+  rankId: undefined,
+  lastUpdated: undefined,
   ranker: undefined,
   rankerTitle: undefined,
   rankerURL: undefined,
   score: undefined,
+};
+
+const pointingToInvalidRank: MaybeRankedMedia = {
+  rankId: "Anilist:0", // this is what we're testing - we shouldn't be able to add this
+  providerTitle: "dummy entry",
+  providerURL: new URL("https://www.example.com"),
+  type: "TV",
+  provider: "Hulu",
+  lastUpdated: new Date("2025-10-18T05:59:27.684Z"),
 };

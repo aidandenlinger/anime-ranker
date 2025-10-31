@@ -48,6 +48,7 @@ export class Anilist implements Ranker {
     return `query getRanking($search: String!) {
       Page(perPage: ${numberOfResults.toString()}) {
         media(search: $search, type: ${queryType}) {
+          id
           averageScore
           meanScore
           title {
@@ -212,6 +213,7 @@ export class Anilist implements Ranker {
         Page: z.object({
           media: z.array(
             z.object({
+              id: z.number(),
               // null if it's a new show without enough ratings
               averageScore: z.number().nullable(),
               // Sometimes entries have enough ratings for a mean score but not
@@ -240,6 +242,8 @@ export class Anilist implements Ranker {
             rankerTitle: result.title.english ?? result.title.romaji,
             rankerURL: new URL(result.siteUrl),
             ranker: this.name,
+            lastUpdated: new Date(),
+            rankId: `${this.name}:${result.id.toString()}`,
           },
           {
             format: result.format ?? undefined,
