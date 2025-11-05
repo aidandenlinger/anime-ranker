@@ -60,11 +60,6 @@ suite("Database testing", () => {
       noRank,
     ]);
 
-    // Adding media with the same providerTitle and provider should fail
-    t.assert.throws(() => {
-      database.insert(undefinedScore);
-    });
-
     // We can add rank85 again, on a different provider, and it will use the same ranking entry that's already in the DB
     database.insert(rank85StartsWithGOnNetflix);
     t.assert.deepStrictEqual(database.getAll(), [
@@ -77,9 +72,31 @@ suite("Database testing", () => {
       noRank,
     ]);
 
+    // Adding media with the same providerTitle and provider should fail
+    t.assert.throws(() => {
+      database.insert(undefinedScore);
+    });
+
     // We can't add a show without an existing ranking
     t.assert.throws(() => {
       database.insert(pointingToInvalidRank);
+    });
+
+    // We can't add a show with invalid scores
+    t.assert.throws(() => {
+      database.insert({
+        ...rank82StartsWithS,
+        providerTitle: "unique title",
+        score: -1,
+      });
+    });
+
+    t.assert.throws(() => {
+      database.insert({
+        ...rank82StartsWithS,
+        providerTitle: "unique title",
+        score: 101,
+      });
     });
   });
 

@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS Ranks (
     "rankId" TEXT PRIMARY KEY NOT NULL,
     "rankerTitle" TEXT NOT NULL,
     "rankerURL" TEXT NOT NULL,
-    "score" INTEGER,
+    "score" INTEGER CHECK ("score" >= 0 AND "score" <= 100),
     "ranker" TEXT NOT NULL,
     "lastUpdated" TEXT NOT NULL
 )`;
