@@ -51,21 +51,37 @@ export class Database {
     // TODO(rank-zod): This validation is silly but I'm lazy and it typechecks, would be nice
     // to handle it in zod instead
     if (
-      entry.rankId &&
-      entry.rankerTitle &&
-      entry.rankerURL &&
-      entry.ranker &&
-      entry.lastUpdated
+      entry.rankId !== undefined &&
+      entry.rankerTitle !== undefined &&
+      entry.rankerURL !== undefined &&
+      entry.ranker !== undefined &&
+      entry.lastUpdated !== undefined &&
+      entry.poster !== undefined &&
+      entry.genres !== undefined
     ) {
-      const { rankId, rankerTitle, rankerURL, score, ranker, lastUpdated } =
-        rankSchema.encode({
-          rankId: entry.rankId,
-          rankerTitle: entry.rankerTitle,
-          rankerURL: entry.rankerURL,
-          score: entry.score,
-          ranker: entry.ranker,
-          lastUpdated: entry.lastUpdated,
-        });
+      const {
+        rankId,
+        rankerTitle,
+        rankerURL,
+        score,
+        ranker,
+        lastUpdated,
+        poster,
+        description,
+        genres,
+        startDate,
+      } = rankSchema.encode({
+        rankId: entry.rankId,
+        rankerTitle: entry.rankerTitle,
+        rankerURL: entry.rankerURL,
+        score: entry.score,
+        ranker: entry.ranker,
+        lastUpdated: entry.lastUpdated,
+        poster: entry.poster,
+        description: entry.description,
+        genres: entry.genres,
+        startDate: entry.startDate,
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- we don't care to learn about the resulting changes here
       this.#sql.run`
@@ -75,7 +91,11 @@ export class Database {
             "rankerURL",
             "score",
             "ranker",
-            "lastUpdated"
+            "lastUpdated",
+            "poster",
+            "genres",
+            "startDate",
+            "description"
         )
         VALUES (
             ${rankId},
@@ -83,7 +103,11 @@ export class Database {
             ${rankerURL},
             ${score},
             ${ranker},
-            ${lastUpdated}
+            ${lastUpdated},
+            ${poster},
+            ${genres},
+            ${startDate},
+            ${description}
         )
         ON CONFLICT ("rankId")
         DO UPDATE SET

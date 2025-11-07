@@ -1,4 +1,5 @@
 import type { Media, Providers } from "../providers/provider.ts";
+import { P, match } from "ts-pattern";
 import type { Rank, Ranker } from "./ranker.ts";
 import pThrottle from "p-throttle";
 import { titleSimilarity } from "./string-comp.ts";
@@ -58,6 +59,16 @@ export class Anilist implements Ranker {
           synonyms
           format
           siteUrl
+          coverImage {
+            large
+          }
+          startDate {
+            day
+            month
+            year
+          }
+          genres
+          description
         }
       }
     }
@@ -227,6 +238,16 @@ export class Anilist implements Ranker {
               // null if it's a new show with undetermined format
               format: z.literal(anilistMediaFormat).nullable(),
               siteUrl: z.httpUrl(),
+              coverImage: z.object({
+                large: z.httpUrl(),
+              }),
+              startDate: z.object({
+                day: z.number().nullable(),
+                month: z.number().nullable(),
+                year: z.number().nullable(),
+              }),
+              genres: z.array(z.string()),
+              description: z.string().nullable(),
             }),
           ),
         }),
@@ -236,6 +257,26 @@ export class Anilist implements Ranker {
       const results = resp.data.Page.media;
 
       return results.map((result): [Rank, Metadata] => {
+        /* eslint-disable unicorn/no-null -- we're matching API results which have nulls */
+        const startDate = match(result.startDate)
+          .with(
+            { year: P.nonNullable, month: null, day: null },
+            ({ year }) => new Date(year),
+          )
+          .with(
+            { year: P.nonNullable, month: P.nonNullable, day: null },
+            // month INDEX: January is 0, December is 11
+            ({ year, month }) => new Date(year, month - 1),
+          )
+          .with(
+            { year: P.nonNullable, month: P.nonNullable, day: P.nonNullable },
+            // month INDEX: January is 0, December is 11
+            ({ year, month, day }) => new Date(year, month - 1, day),
+          )
+          // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly setting variable to undefined, not a no-op
+          .otherwise(() => undefined);
+        /* eslint-enable unicorn/no-null -- done checking for explicit nulls */
+
         return [
           {
             score: result.averageScore ?? result.meanScore ?? undefined,
@@ -244,6 +285,10 @@ export class Anilist implements Ranker {
             ranker: this.name,
             lastUpdated: new Date(),
             rankId: `${this.name}:${result.id.toString()}`,
+            genres: result.genres,
+            poster: new URL(result.coverImage.large),
+            startDate,
+            description: result.description ?? undefined,
           },
           {
             format: result.format ?? undefined,

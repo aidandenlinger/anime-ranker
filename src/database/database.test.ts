@@ -212,6 +212,13 @@ const rank85StartsWithG: ScoredMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
   rankId: "Anilist:2001",
+  poster: new URL(
+    "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx2001-XwRnjzGeFWRQ.png",
+  ),
+  genres: ["Action", "Comedy", "Drama", "Mecha", "Romance", "Sci-Fi"],
+  description:
+    "In a far away future, mankind lives underground in huge caves, unknowing of a world above with a sky and stars.",
+  startDate: new Date(2007, 3, 1),
 };
 
 const rank85StartsWithGOnNetflix: ScoredMedia = {
@@ -225,6 +232,13 @@ const rank85StartsWithGOnNetflix: ScoredMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
   rankId: "Anilist:2001",
+  poster: new URL(
+    "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx2001-XwRnjzGeFWRQ.png",
+  ),
+  genres: ["Action", "Comedy", "Drama", "Mecha", "Romance", "Sci-Fi"],
+  description:
+    "In a far away future, mankind lives underground in huge caves, unknowing of a world above with a sky and stars.",
+  startDate: new Date(2007, 3, 1),
 };
 
 const rank82StartsWithS: ScoredMedia = {
@@ -238,6 +252,10 @@ const rank82StartsWithS: ScoredMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:29:15.192Z"),
   rankId: "Anilist:142770",
+  poster: new URL("https://example.com"),
+  genres: [],
+  description: undefined,
+  startDate: undefined,
 };
 
 const rank79StartsWithO: ScoredMedia = {
@@ -251,6 +269,10 @@ const rank79StartsWithO: ScoredMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:29:41.304Z"),
   rankId: "Anilist:80198443",
+  poster: new URL("https://example.com"),
+  genres: [],
+  description: undefined,
+  startDate: undefined,
 };
 
 const rank79StartsWithR: ScoredMedia = {
@@ -264,6 +286,10 @@ const rank79StartsWithR: ScoredMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:15:32.534Z"),
   rankId: "Anilist:81318888",
+  poster: new URL("https://example.com"),
+  genres: [],
+  description: undefined,
+  startDate: undefined,
 };
 
 const undefinedScore: MaybeRankedMedia = {
@@ -279,6 +305,10 @@ const undefinedScore: MaybeRankedMedia = {
   ranker: "Anilist",
   lastUpdated: new Date("2025-10-06T05:28:27.684Z"),
   rankId: "Anilist:188388",
+  poster: new URL("https://example.com"),
+  genres: [],
+  description: undefined,
+  startDate: undefined,
 };
 
 const noRank: MaybeRankedMedia = {
@@ -294,6 +324,10 @@ const noRank: MaybeRankedMedia = {
   rankerTitle: undefined,
   rankerURL: undefined,
   score: undefined,
+  poster: undefined,
+  genres: undefined,
+  description: undefined,
+  startDate: undefined,
 };
 
 const pointingToInvalidRank: MaybeRankedMedia = {

@@ -22,6 +22,12 @@ export type Ranker = Readonly<{
  * The ranking of an anime.
  */
 export type Rank<Ranker extends Rankers = Rankers> = Readonly<{
+  /** A unique identifier for a rank within a Ranker. */
+  rankId: `${Ranker}:${string}`;
+
+  /** Name of the ranker. */
+  ranker: Ranker;
+
   /**
    * English title of the media on the ranker.
    * If there is no English title, this should be romaji.
@@ -42,12 +48,18 @@ export type Rank<Ranker extends Rankers = Rankers> = Readonly<{
    */
   score?: number | undefined;
 
-  /** Name of the ranker. */
-  ranker: Rankers;
-
   /** The time this ranking was retrieved. */
   lastUpdated: Date;
 
-  /** A unique identifier for a rank within a Ranker. */
-  rankId: `${Ranker}:${string}`;
+  /** A URL to an image of a poster for the show. */
+  poster: URL;
+
+  /** Genres of the media. */
+  genres: string[];
+
+  /** The start date of the media's release. */
+  startDate?: Date | undefined;
+
+  /** A small description of the media. */
+  description?: string | undefined;
 }>;

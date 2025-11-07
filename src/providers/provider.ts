@@ -27,12 +27,12 @@ export const mediaType = ["TV", "MOVIE", "MANGA"] as const;
  * Media (anime or manga) from a provider.
  */
 export type Media<Provider extends Providers = Providers> = Readonly<{
+  /** The provider this media is on. */
+  provider: Provider;
   /** The tile of the media on the provider. */
   providerTitle: string;
   /** What type of media this is */
   type: (typeof mediaType)[number];
   /** Where to access the media on the provider. */
   providerURL: URL;
-  /** The provider this media is on. */
-  provider: Provider;
 }>;

@@ -17,6 +17,16 @@ const isoDatetimeToDate = z.codec(z.iso.datetime(), z.date(), {
   encode: (date) => date.toISOString(),
 });
 
+const nullableIsoDatetimeToDate = z.codec(
+  z.iso.datetime().nullable(),
+  z.date().optional(),
+  {
+    decode: (isoString) => (isoString ? new Date(isoString) : undefined),
+    // eslint-disable-next-line unicorn/no-null -- SQL needs and will return a null here.
+    encode: (date) => (date ? date.toISOString() : null),
+  },
+);
+
 // Converts a nullable number to an optional number.
 const nullableNumberToUndefined = z.codec(
   z.number().nullable(),
@@ -25,6 +35,16 @@ const nullableNumberToUndefined = z.codec(
     decode: (nullableNumber) => nullableNumber ?? undefined,
     // eslint-disable-next-line unicorn/no-null -- SQL needs and will return a null here.
     encode: (optionalNumber) => optionalNumber ?? null,
+  },
+);
+
+const nullableStringToUndefined = z.codec(
+  z.string().nullable(),
+  z.string().optional(),
+  {
+    decode: (nullableString) => nullableString ?? undefined,
+    // eslint-disable-next-line unicorn/no-null -- SQL needs and will return a null here.
+    encode: (optionalString) => optionalString ?? null,
   },
 );
 
@@ -44,6 +64,13 @@ const nullableRankIdToUndefined = z.codec(
   },
 );
 
+/** Convert "A, B, C" to ["A", "B", "C"] and vice versa */
+const commaStringToArray = z.codec(z.string(), z.array(z.string()), {
+  decode: (stringWithCommas) =>
+    stringWithCommas === "" ? [] : stringWithCommas.split(", "),
+  encode: (array) => array.join(", "),
+});
+
 // Build our schemas.
 // Why define them as types and then build a schema? Types keep JSDocs, which I want easily accessible for these types.
 // So we build the schema after and keep them in sync by checking they satisfy the types.
@@ -62,6 +89,10 @@ export const rankSchema = z.object({
   ranker: z.enum(rankers),
   lastUpdated: isoDatetimeToDate,
   rankId: rankIdSchema,
+  genres: commaStringToArray,
+  poster: stringToHttpURL,
+  startDate: nullableIsoDatetimeToDate,
+  description: nullableStringToUndefined,
 }) satisfies z.ZodType<Rank>;
 
 export const mediaAndRankIdSchema = mediaSchema.and(
@@ -92,7 +123,11 @@ CREATE TABLE IF NOT EXISTS Ranks (
     "rankerURL" TEXT NOT NULL,
     "score" INTEGER CHECK ("score" >= 0 AND "score" <= 100),
     "ranker" TEXT NOT NULL,
-    "lastUpdated" TEXT NOT NULL
+    "lastUpdated" TEXT NOT NULL,
+    "poster" TEXT NOT NULL,
+    "genres" TEXT NOT NULL,
+    "startDate" TEXT,
+    "description" TEXT
 )`;
 
 // WARNING: must be kept in sync with mediaSchema + rankIdSchema!

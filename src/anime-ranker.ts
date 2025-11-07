@@ -126,7 +126,9 @@ for (const provider of providers) {
     rank: { minimumScore: SCORE_THRESHOLD },
     provider: provider.name,
   })) {
-    console.log(`- ${media.providerTitle} (${media.score.toString()})`);
+    console.log(
+      `- ${media.providerTitle}${media.startDate ? ` (${media.startDate.getFullYear().toString()})` : ""} - ${media.score.toString()}`,
+    );
   }
   console.log(); // newline
 
