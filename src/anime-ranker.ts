@@ -54,73 +54,81 @@ using database = new Database(
   path.join(OUT_DIR, `${new Date().toISOString()}.sqlite`),
 );
 
-for (const provider of providers) {
-  let mediaList;
-  try {
-    mediaList = await provider.getMedia();
-  } catch (error) {
-    if (error instanceof Error) {
-      console.warn(error.message);
-    }
-    console.warn(`Skipping ${provider.name} due to error...`);
-    continue;
+console.log("Fetching media list...");
+const mediaFetch = await Promise.allSettled(
+  providers.map((provider) => provider.getMedia()),
+);
+
+for (const failedPromise of mediaFetch.filter(
+  (result) => result.status === "rejected",
+)) {
+  if (failedPromise.reason instanceof Error) {
+    console.warn(failedPromise.reason.message);
+  } else {
+    console.warn("Fetching media for a provider failed", failedPromise.reason);
   }
+}
 
-  // If any testing flags are provided, filter the media down
-  if (cliArguments.testLessTitles) {
-    const seed =
-      typeof cliArguments.testLessTitles === "number"
-        ? cliArguments.testLessTitles
-        : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+let mediaList = mediaFetch
+  .filter((result) => result.status === "fulfilled")
+  .flatMap((result) => result.value);
 
-    console.log(
-      `[--test-less-titles] ${provider.name} seed: ${seed.toString()}`,
-    );
+// If any testing flags are provided, filter the media down
+if (cliArguments.testLessTitles) {
+  const seed =
+    typeof cliArguments.testLessTitles === "number"
+      ? cliArguments.testLessTitles
+      : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
-    mediaList = shuffle(mediaList, seed);
-    // Take 10% (but at least 1 element)
-    const PERCENTAGE = 0.1;
-    mediaList = mediaList.slice(0, Math.max(1, mediaList.length * PERCENTAGE));
-  } else if (cliArguments.testTitle) {
-    const substrings = cliArguments.testTitle;
-    mediaList = mediaList.filter((media) =>
-      substrings.some((substring) => media.providerTitle.includes(substring)),
-    );
-    console.log(
-      `[--test-titles] Only checking ${mediaList.map((media) => media.providerTitle).join(", ")}`,
-    );
-  }
-
-  // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
-  // the future
-
-  const ranker = new Anilist();
-
-  const progressBar = new SingleBar(
-    {
-      format: `${provider.name} {bar} {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}`,
-      stopOnComplete: true,
-      clearOnComplete: true,
-      hideCursor: true,
-      gracefulExit: true,
-    },
-    Presets.shades_grey,
+  console.log(
+    `[--test-less-titles] providers: ${providers.map((provider) => provider.name).join(", ")} seed: ${seed.toString()}`,
   );
-  progressBar.start(mediaList.length, 0);
 
-  for (const media of mediaList) {
-    progressBar.update({ title: media.providerTitle });
-    const rank = await ranker.getRanking(media);
+  mediaList = shuffle(mediaList, seed);
+  // Take 10% (but at least 1 element)
+  const PERCENTAGE = 0.1;
+  mediaList = mediaList.slice(0, Math.max(1, mediaList.length * PERCENTAGE));
+} else if (cliArguments.testTitle) {
+  const substrings = cliArguments.testTitle;
+  mediaList = mediaList.filter((media) =>
+    substrings.some((substring) => media.providerTitle.includes(substring)),
+  );
+  console.log(
+    `[--test-titles] Only checking ${mediaList.map((media) => media.providerTitle).join(", ")}`,
+  );
+}
 
-    progressBar.increment();
+// For now, anilist is the only ranker. I've set it up so it's easy to expand this in
+// the future
 
-    database.insert({
-      ...media,
-      ...rank,
-    });
-  }
-  console.log(); // newline
+const ranker = new Anilist();
 
+const progressBar = new SingleBar(
+  {
+    format: `{bar} {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}`,
+    stopOnComplete: true,
+    clearOnComplete: true,
+    hideCursor: true,
+    gracefulExit: true,
+  },
+  Presets.shades_grey,
+);
+progressBar.start(mediaList.length, 0);
+
+for (const media of mediaList) {
+  progressBar.update({ title: media.providerTitle });
+  const rank = await ranker.getRanking(media);
+
+  progressBar.increment();
+
+  database.insert({
+    ...media,
+    ...rank,
+  });
+}
+console.log(); // newline
+
+for (const provider of providers) {
   console.log(`On ${provider.name}, you should check out:`);
   for (const media of database.getAll({
     rank: { minimumScore: SCORE_THRESHOLD },
@@ -135,14 +143,16 @@ for (const provider of providers) {
   const noRank = database.getAll({ rank: false, provider: provider.name });
   if (noRank.length > 0) {
     console.warn(
-      `Anilist couldn't find a ranking for ${noRank.map((t) => t.providerTitle).join(", ")}`,
+      `Anilist couldn't find a ranking for ${noRank.map((t) => t.providerTitle).join(", ")}\n`,
     );
     if (provider.name === "Netflix") {
       console.warn(
-        "Please note that Netflix labels a lot of content as 'Anime' when it isn't considered as such by Anilist.",
+        "Please note that Netflix labels a lot of content as 'Anime' when it isn't considered as such by Anilist.\n",
       );
     }
   }
 }
 
-console.log(`Wrote all results, sorted by score, to ${database.path}`);
+console.log(
+  `Wrote all results (including those below ${SCORE_THRESHOLD.toString()}) to ${database.path}`,
+);
