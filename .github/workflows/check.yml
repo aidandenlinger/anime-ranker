@@ -15,7 +15,7 @@ jobs:
         uses: jdx/mise-action@v3
 
       - name: Setup pnpm cache
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           cache: "pnpm"
 
