@@ -4,3 +4,9 @@
 # setting ensures that only packages released at least one day ago can be
 # installed.
 minimumReleaseAge: 1440
+
+# When set to no-downgrade, this setting will prevent installation of a package if its trust
+# level has decreased compared to previous releases (for example, if it was previously published
+# by a trusted publisher but now only has provenance or no trust evidence). This helps you avoid
+# installing potentially compromised or less trustworthy versions.
+trustPolicy: no-downgrade
