@@ -95,7 +95,7 @@ export default defineConfig(
         "error",
         {
           // Common values that don't need documentation
-          ignore: [0, 1],
+          ignore: [-1, 0, 1],
           // jsdoc enforces documentation of these
           ignoreReadonlyClassProperties: true,
         },

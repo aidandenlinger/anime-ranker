@@ -94,6 +94,28 @@ export class Anilist implements Ranker {
         acceptedMediaFormats[media.type].includes(metadata.format),
     );
 
+    if (media.type === "MANGA") {
+      // There are two accepted formats for Manga - MANGA and ONE_SHOT.
+      // There's the case where a one-shot gets promoted to a manga, and they share the same name.
+      // In this case, it's more likely that the manga service has the full series manga, not the precursor oneshot.
+      // So, we want to put full series first so they're considered first. Example case - "Bone Collection" on ShonenJump
+      // This isn't a concern for anime - OVAs typically have a different title than a full series.
+      results = results.toSorted(([_aEntry, aMetadata], [_bEntry, bMetadata]) =>
+        match([aMetadata.format, bMetadata.format])
+          // If they're the same type, don't change the sort
+          .when(
+            ([a, b]) => a === b,
+            () => 0 as const,
+          )
+          // if a is manga and b isn't, put a higher in list
+          .with(["MANGA", P.any], () => -1 as const)
+          // if b is manga and a isn't, put b higher in list
+          .with([P.any, "MANGA"], () => 1 as const)
+          // emergency fallback, don't change sorting
+          .otherwise(() => 0 as const),
+      );
+    }
+
     const providerTitleIsIn = (possibleTitles: string[]) =>
       possibleTitles.some(
         (anilistTitle) =>
