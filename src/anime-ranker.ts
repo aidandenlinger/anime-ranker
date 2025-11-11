@@ -105,7 +105,7 @@ const ranker = new Anilist();
 
 const progressBar = new SingleBar(
   {
-    format: `{bar} {percentage}% | ETA: {eta}s | {value}/{total} | Currently Searching: {title}`,
+    format: `{bar} {percentage}% | ETA: {eta_formatted} | {value}/{total} | Currently Searching: {title}`,
     stopOnComplete: true,
     clearOnComplete: true,
     hideCursor: true,
