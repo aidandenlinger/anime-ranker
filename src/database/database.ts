@@ -48,17 +48,9 @@ export class Database {
    */
   insert(entry: MaybeRankedMedia) {
     // NOTE: Ranks must be created first because Media has a `REFERENCES` to Ranks
-    // TODO(rank-zod): This validation is silly but I'm lazy and it typechecks, would be nice
-    // to handle it in zod instead
-    if (
-      entry.rankId !== undefined &&
-      entry.rankerTitle !== undefined &&
-      entry.rankerURL !== undefined &&
-      entry.ranker !== undefined &&
-      entry.lastUpdated !== undefined &&
-      entry.poster !== undefined &&
-      entry.genres !== undefined
-    ) {
+    // @ts-expect-error -- `safeEncode` has a needlessly strict type signature, as if it was `encode`. I expect encoding to fail sometimes (when rank isn't defined), which is why I'm using `safeEncode` instead of `encode`. Ignore the type signature and allow the falliable action to occur.
+    const maybeRank = rankSchema.safeEncode(entry);
+    if (maybeRank.success) {
       const {
         rankId,
         rankerTitle,
@@ -70,18 +62,7 @@ export class Database {
         description,
         genres,
         startDate,
-      } = rankSchema.encode({
-        rankId: entry.rankId,
-        rankerTitle: entry.rankerTitle,
-        rankerURL: entry.rankerURL,
-        score: entry.score,
-        ranker: entry.ranker,
-        lastUpdated: entry.lastUpdated,
-        poster: entry.poster,
-        description: entry.description,
-        genres: entry.genres,
-        startDate: entry.startDate,
-      });
+      } = maybeRank.data;
 
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- we don't care to learn about the resulting changes here
       this.#sql.run`
@@ -291,7 +272,6 @@ export class Database {
       )
       .exhaustive()
       .map((result) => {
-        // TODO(rank-zod): handle null in zod only
         const nullToUndefined = Object.fromEntries(
           Object.entries(result).map(([key, value]) => [
             key,
