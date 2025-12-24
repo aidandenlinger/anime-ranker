@@ -2,17 +2,24 @@
 import { DatabaseSync, type SQLTagStore } from "node:sqlite";
 import {
   type MaybeRankedMedia,
+  type MediaPrimaryKey,
   type ScoredMedia,
   createMediaTable,
   createRanksTable,
   maybeRankedMediaSchema,
   mediaAndRankIdSchema,
+  mediaPrimaryKeySchema,
   rankSchema,
 } from "./media-schema.ts";
-import type { Media, Providers } from "../providers/provider.ts";
+import {
+  type Media,
+  type Providers,
+  providers,
+} from "../providers/provider.ts";
 import { P, match } from "ts-pattern";
 import type { Rank } from "../rankers/ranker.ts";
 import assert from "node:assert/strict";
+import z from "zod";
 
 /**
  * Class to add and list entries from a database. Use explicit resource management or close it when you're done.
@@ -298,6 +305,111 @@ export class Database {
     }
 
     return results;
+  }
+
+  /**
+   * Compare the database against a list of media, only for the specified provider. Designed so you can synchronize
+   * the database to a new set of media.
+   * @param medias The set of media to compare the database against
+   * @param provider Optional provider subset to compare against
+   * @returns Information on if the media is in the new set and database, only in the database, or not in the database
+   */
+  mediaDiff<Provider extends Providers>(
+    medias: MediaPrimaryKey<Provider>[],
+    provider?: Provider,
+  ) {
+    // Map our titles to their identifying string, because JavaScript sets
+    // can't hold objects
+    const titlesInRequest = new Map(
+      medias.map((entry) => [
+        `${entry.provider}:${entry.providerTitle}` as const,
+        entry,
+      ]),
+    );
+
+    const titlesInRequestSet = new Set(titlesInRequest.keys());
+    const titlesInDatabase = this.#titles(provider);
+
+    const inBoth = [...titlesInRequestSet.intersection(titlesInDatabase)].map(
+      (key) => titlesInRequest.get(key),
+    );
+
+    assert.ok(inBoth.every((entry) => entry !== undefined));
+
+    const notInDatabase = [
+      ...titlesInRequestSet.difference(titlesInDatabase),
+    ].map((key) => titlesInRequest.get(key));
+
+    assert.ok(notInDatabase.every((entry) => entry !== undefined));
+
+    const onlyInDatabase = [
+      ...titlesInDatabase.difference(titlesInRequestSet),
+    ].map((key) => {
+      const [rawProvider, providerTitle] = key.split(":");
+      const databaseProvider = z.enum(providers).parse(rawProvider);
+      assert.ok(provider === undefined || databaseProvider === provider);
+      assert.ok(providerTitle);
+
+      return { provider: databaseProvider, providerTitle } as const;
+    });
+
+    return {
+      inBoth,
+      onlyInDatabase,
+      notInDatabase,
+    };
+  }
+
+  /** @returns all titlesin the database via an identifier string, for use with a set */
+  #titles(): ReadonlySet<`${Providers}:${string}`>;
+
+  /**
+   * @param provider Optional provider to filter the results to
+   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
+   */
+  #titles<Provider extends Providers>(
+    provider?: Provider,
+  ): ReadonlySet<`${Provider}:${string}`>;
+
+  /**
+   * @param provider Optional provider to filter the results to
+   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
+   */
+  #titles(provider?: Providers) {
+    return new Set(
+      match(provider satisfies Providers | undefined)
+        .with(
+          P.nonNullable,
+          (provider) =>
+            this.#sql.all`
+              SELECT
+                  "provider",
+                  "providerTitle"
+              FROM Media
+              WHERE
+                  "provider" = ${provider}
+              ORDER BY "providerTitle" ASC, "provider" ASC`,
+        )
+        .otherwise(
+          () =>
+            this.#sql.all`
+              SELECT
+                  "provider",
+                  "providerTitle"
+              FROM Media
+              ORDER BY "providerTitle" ASC, "provider" ASC
+          `,
+        )
+        .map((result) => mediaPrimaryKeySchema.parse(result))
+        .map((entry) => {
+          if (provider === undefined) {
+            return `${entry.provider}:${entry.providerTitle}` as const;
+          }
+
+          assert.ok(entry.provider === provider);
+          return `${provider}:${entry.providerTitle}` as const;
+        }),
+    );
   }
 
   /**

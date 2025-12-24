@@ -141,6 +141,21 @@ CREATE TABLE IF NOT EXISTS Media (
     PRIMARY KEY ("provider", "providerTitle")
 )`;
 
+/** The primary key for the Media table, uniquely identifying a Media. */
+export type MediaPrimaryKey<Provider extends Providers = Providers> = Readonly<{
+  /** The provider of the title. */
+  provider: Provider;
+  /** The title on the provider. */
+  providerTitle: string;
+}>;
+
+export const mediaPrimaryKeySchema = mediaSchema
+  .pick({
+    provider: true,
+    providerTitle: true,
+  })
+  .readonly() satisfies z.ZodType<MediaPrimaryKey>;
+
 /** How Zod handles partial, with the field optional and can be explicitly set to undefined. */
 type ZodPartial<Object> = {
   [Property in keyof Object]?: Object[Property] | undefined;

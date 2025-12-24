@@ -189,6 +189,57 @@ suite("Database testing", () => {
     /* eslint-enable @typescript-eslint/no-unnecessary-condition -- we are done with the filter tests */
   });
 
+  test("Diffing", (t: TestContext) => {
+    // We can diff the database against a different list.
+    // This allows us to see the operations needed to make
+    // the database match new data and only fetch new data.
+    database.insertMany([
+      rank85StartsWithG, // Hulu
+      rank85StartsWithGOnNetflix, // Netflix
+    ]);
+
+    const { inBoth, onlyInDatabase, notInDatabase } = database.mediaDiff([
+      rank85StartsWithG, // this is in both
+      rank82StartsWithS, // this is not in the DB
+      // and rank85StartsWithGOnNetflix is only in the DB
+    ]);
+
+    // To make the DB equal the new state: don't need to do anything here
+    t.assert.deepStrictEqual(inBoth, [rank85StartsWithG]);
+
+    // Note that "only in DB" only returns the key, rather than the full data.
+    // Delete these titles if you want the database to match the new data.
+    t.assert.deepStrictEqual(onlyInDatabase, [
+      {
+        provider: rank85StartsWithGOnNetflix.provider,
+        providerTitle: rank85StartsWithGOnNetflix.providerTitle,
+      },
+    ]);
+
+    // Fetch data and add this title if you want the database to match the new data.
+    t.assert.deepStrictEqual(notInDatabase, [rank82StartsWithS]);
+
+    // This will also work on provider subsets
+    const huluDiff = database.mediaDiff([rank85StartsWithG], "Hulu");
+
+    t.assert.deepStrictEqual(huluDiff.inBoth, [rank85StartsWithG]);
+    t.assert.deepStrictEqual(huluDiff.notInDatabase, []);
+    // If we were considering Netflix titles, this would have an entry
+    t.assert.deepStrictEqual(huluDiff.onlyInDatabase, []);
+
+    const netflixDiff = database.mediaDiff([rank82StartsWithS], "Netflix");
+
+    t.assert.deepStrictEqual(netflixDiff.inBoth, []);
+    t.assert.deepStrictEqual(netflixDiff.notInDatabase, [rank82StartsWithS]);
+    // If we were considering Hulu titles, this would have a hulu entry
+    t.assert.deepStrictEqual(netflixDiff.onlyInDatabase, [
+      {
+        provider: rank85StartsWithGOnNetflix.provider,
+        providerTitle: rank85StartsWithGOnNetflix.providerTitle,
+      },
+    ]);
+  });
+
   afterEach(() => {
     // NOTE: You can avoid having to close the database manually
     // via explicit resource management:
@@ -199,19 +250,19 @@ suite("Database testing", () => {
 
 // Test data
 
-const rank85StartsWithG: ScoredMedia = {
+const rank85StartsWithG = {
   providerTitle: "Gurren Lagann",
   providerURL: new URL(
     "https://hulu.com/series/gurren-lagann-6ea27f41-e422-4c58-8e06-9ad1602903b7",
   ),
-  type: "TV",
-  provider: "Hulu",
+  type: "TV" as const,
+  provider: "Hulu" as const,
   score: 85,
   rankerTitle: "Gurren Lagann",
   rankerURL: new URL("https://anilist.co/anime/2001"),
-  ranker: "Anilist",
+  ranker: "Anilist" as const,
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
-  rankId: "Anilist:2001",
+  rankId: "Anilist:2001" as const,
   poster: new URL(
     "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx2001-XwRnjzGeFWRQ.png",
   ),
@@ -221,17 +272,17 @@ const rank85StartsWithG: ScoredMedia = {
   startDate: new Date(2007, 3, 1),
 };
 
-const rank85StartsWithGOnNetflix: ScoredMedia = {
+const rank85StartsWithGOnNetflix = {
   providerTitle: "Gurren Lagann",
   providerURL: new URL("https://www.netflix.com/title/70213196"),
-  type: "TV",
-  provider: "Netflix",
+  type: "TV" as const,
+  provider: "Netflix" as const,
   score: 85,
   rankerTitle: "Gurren Lagann",
   rankerURL: new URL("https://anilist.co/anime/2001"),
-  ranker: "Anilist",
+  ranker: "Anilist" as const,
   lastUpdated: new Date("2025-10-13T02:24:43.409Z"),
-  rankId: "Anilist:2001",
+  rankId: "Anilist:2001" as const,
   poster: new URL(
     "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx2001-XwRnjzGeFWRQ.png",
   ),
@@ -241,17 +292,17 @@ const rank85StartsWithGOnNetflix: ScoredMedia = {
   startDate: new Date(2007, 3, 1),
 };
 
-const rank82StartsWithS: ScoredMedia = {
+const rank82StartsWithS = {
   providerTitle: "Suzume",
   providerURL: new URL("https://netflix.com/title/81696498"),
-  type: "MOVIE",
-  provider: "Netflix",
+  type: "MOVIE" as const,
+  provider: "Netflix" as const,
   score: 82,
   rankerTitle: "Suzume",
   rankerURL: new URL("https://anilist.co/anime/142770"),
-  ranker: "Anilist",
+  ranker: "Anilist" as const,
   lastUpdated: new Date("2025-10-06T05:29:15.192Z"),
-  rankId: "Anilist:142770",
+  rankId: "Anilist:142770" as const,
   poster: new URL("https://example.com"),
   genres: [],
   description: undefined,
