@@ -6,8 +6,6 @@ import { Database } from "./database/database.ts";
 import { Hulu } from "./providers/hulu.ts";
 import type { Provider } from "./providers/provider.ts";
 import { cliInterface } from "./cli-interface.ts";
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
 import process from "node:process";
 import shuffle from "knuth-shuffle-seeded";
 import z from "zod";
@@ -48,11 +46,8 @@ for (const provider of cliArguments.providers) {
   }
 }
 
-const OUT_DIR = path.join(import.meta.dirname, "..", "out");
-await mkdir(OUT_DIR, { recursive: true });
-using database = new Database(
-  path.join(OUT_DIR, `${new Date().toISOString()}.sqlite`),
-);
+console.log(`Using database ${cliArguments.database}`);
+using database = new Database(cliArguments.database);
 
 console.log("Fetching media list...");
 const mediaFetch = await Promise.allSettled(

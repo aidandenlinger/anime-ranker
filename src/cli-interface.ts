@@ -17,6 +17,11 @@ export const cliInterface = new Command()
         "Providers with a small library and no authentication required",
       ),
   )
+  .option(
+    "-d, --database <database>",
+    "Path to the database to use (will either create a new database at this location, or update an existing one.) Defaults to database.sqlite.",
+    "database.sqlite",
+  )
   .addOption(
     new Option(
       "--test-less-titles [seed]",

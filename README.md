@@ -13,7 +13,7 @@ This project uses [`pnpm`] and [`node`]. The specific versions used are tracked 
 > [!NOTE]
 > Since [Anilist] has a [30 requests per minute rate limit][rate limit], this script takes 2 seconds to run per show, and can take a while to run as a result.
 
-Run `pnpm start` to run the script. Without any arguments, it will save the data to a sqlite3 database in the `out` folder.
+Run `pnpm start` to run the script. Without any arguments, it will create or use a sqlite3 database at `database.sqlite`. Use the `--database` flag to specify a different location.
 
 Run `pnpm start --help` to see all command line options.
 
