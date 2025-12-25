@@ -4,6 +4,7 @@ import {
   type MaybeRankedMedia,
   type MediaPrimaryKey,
   type ScoredMedia,
+  createDeletedTable,
   createMediaTable,
   createRanksTable,
   maybeRankedMediaSchema,
@@ -47,6 +48,7 @@ export class Database {
     // NOTE: Ranks must be created first because Media has a `REFERENCES` to Ranks
     this.#db.exec(createRanksTable);
     this.#db.exec(createMediaTable);
+    this.#db.exec(createDeletedTable);
   }
 
   /**
@@ -138,6 +140,67 @@ export class Database {
       this.insert(media);
     }
     this.#db.exec("COMMIT");
+  }
+
+  /**
+   * Soft delete an entry from the database by removing a media
+   * from the Media table and moving it to the Deleted table.
+   * @param media The primary key of the media to delete
+   * @throws {Error} if media is not in the table
+   */
+  delete(media: MediaPrimaryKey) {
+    // Insert the row into the deleted table
+    const insertResults = this.#sql.run`
+      INSERT INTO Deleted
+      SELECT *
+      FROM Media
+      WHERE
+          "provider" = ${media.provider}
+          AND "providerTitle" = ${media.providerTitle}
+    `;
+
+    if (insertResults.changes === 0) {
+      throw new Error(
+        `${media.provider} ${media.providerTitle} does not appear to be in the table and cannot be deleted.`,
+      );
+    }
+
+    // Remove it from Media table
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- we don't care to learn about the resulting changes here
+    this.#sql.run`
+      DELETE FROM Media
+      WHERE
+          "provider" = ${media.provider}
+          AND "providerTitle" = ${media.providerTitle}
+    `;
+
+    // TODO: garbage collection of the Ranks table
+    // by checking if there are any media that point to it,
+    // and deleting if there are none
+  }
+
+  /**
+   * Delete many media in one transaction.
+   * @param mediaList The media to delete
+   * @throws {Error} if any of the media are not in the table. This function deletes every entry it can before throwing this error.
+   */
+  deleteMany(mediaList: MediaPrimaryKey[]) {
+    this.#db.exec("BEGIN TRANSACTION");
+    const errors = [];
+    for (const media of mediaList) {
+      try {
+        this.delete(media);
+      } catch {
+        errors.push(media);
+      }
+    }
+    this.#db.exec("COMMIT");
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Some media were not in the database and could not be deleted:\n${errors.map((entry) => `  - ${entry.provider}, ${entry.providerTitle}`).join("\n")}`,
+      );
+    }
   }
 
   /**

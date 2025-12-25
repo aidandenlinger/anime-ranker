@@ -141,6 +141,17 @@ CREATE TABLE IF NOT EXISTS Media (
     PRIMARY KEY ("provider", "providerTitle")
 )`;
 
+// WARNING: must be kept in sync with mediaSchema + rankIdSchema!
+export const createDeletedTable = `
+CREATE TABLE IF NOT EXISTS Deleted (
+    "providerTitle" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "providerURL" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "rankId" TEXT REFERENCES Ranks ("rankId"),
+    PRIMARY KEY ("provider", "providerTitle")
+)`;
+
 /** The primary key for the Media table, uniquely identifying a Media. */
 export type MediaPrimaryKey<Provider extends Providers = Providers> = Readonly<{
   /** The provider of the title. */

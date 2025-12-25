@@ -72,6 +72,21 @@ suite("Database testing", () => {
       noRank,
     ]);
 
+    // We can delete media (it's backed up in the Deleted table)
+    database.deleteMany([rank85StartsWithGOnNetflix, rank82StartsWithS]);
+    t.assert.deepStrictEqual(database.getAll(), [
+      rank85StartsWithG,
+      rank79StartsWithO,
+      rank79StartsWithR,
+      undefinedScore,
+      noRank,
+    ]);
+
+    // We can't delete media that isn't in the database
+    t.assert.throws(() => {
+      database.deleteMany([rank85StartsWithGOnNetflix, rank82StartsWithS]);
+    });
+
     // Adding media with the same providerTitle and provider should fail
     t.assert.throws(() => {
       database.insert(undefinedScore);
