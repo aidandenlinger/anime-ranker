@@ -23,6 +23,10 @@ export const cliInterface = new Command()
     "Path to the database to use (will either create a new database at this location, or update an existing one.) Defaults to database.sqlite.",
     "database.sqlite",
   )
+  .option(
+    "--no-update",
+    "Do not attempt to update the database/authenticate to providers. Only return the list of recommended anime from the database for the listed providers.",
+  )
   .addOption(
     new Option(
       "--test-less-titles [seed]",
