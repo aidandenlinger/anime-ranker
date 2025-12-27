@@ -4,6 +4,7 @@ import {
   Option,
 } from "@commander-js/extra-typings";
 import { type Providers, providers } from "./providers/provider.ts";
+import { styleText } from "node:util";
 
 export const cliInterface = new Command()
   .addOption(
@@ -53,3 +54,13 @@ function parseArgumentToInt(input: string): number {
   }
   return parsedValue;
 }
+
+/**
+ * Wrapper around {@link styleText} such that it logs the styled text.
+ * @param arguments_ {@link styleText}'s args
+ */
+export const logStyleText = (
+  ...arguments_: Parameters<typeof styleText>
+): void => {
+  console.log(styleText(...arguments_));
+};

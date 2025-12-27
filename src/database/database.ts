@@ -377,10 +377,10 @@ export class Database {
    * @param provider Optional provider subset to compare against
    * @returns Information on if the media is in the new set and database, only in the database, or not in the database
    */
-  mediaDiff<Provider extends Providers>(
-    medias: MediaPrimaryKey<Provider>[],
-    provider?: Provider,
-  ) {
+  mediaDiff<
+    Entry extends MediaPrimaryKey<Provider>,
+    Provider extends Providers,
+  >(medias: Entry[], provider?: Provider) {
     // Map our titles to their identifying string, because JavaScript sets
     // can't hold objects
     const titlesInRequest = new Map(

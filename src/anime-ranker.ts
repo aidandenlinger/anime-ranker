@@ -1,11 +1,12 @@
+import type { Media, Provider } from "./providers/provider.ts";
 import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
 import { ShonenJump, VizManga } from "./providers/viz.ts";
+import { cliInterface, logStyleText } from "./cli-interface.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
 import { Hulu } from "./providers/hulu.ts";
-import type { Provider } from "./providers/provider.ts";
-import { cliInterface } from "./cli-interface.ts";
+import type { MediaPrimaryKey } from "./database/media-schema.ts";
 import process from "node:process";
 import shuffle from "knuth-shuffle-seeded";
 import z from "zod";
@@ -51,7 +52,9 @@ using database = new Database(cliArguments.database);
 
 console.log("Fetching media list...");
 const mediaFetch = await Promise.allSettled(
-  providers.map((provider) => provider.getMedia()),
+  providers.map((provider) =>
+    provider.getMedia().then((list) => ({ provider: provider.name, list })),
+  ),
 );
 
 for (const failedPromise of mediaFetch.filter(
@@ -64,9 +67,18 @@ for (const failedPromise of mediaFetch.filter(
   }
 }
 
-let mediaList = mediaFetch
+const mediaListByProvider = mediaFetch
   .filter((result) => result.status === "fulfilled")
   .flatMap((result) => result.value);
+
+let mediaToAdd: Media[] = [];
+let mediaToDelete: MediaPrimaryKey[] = [];
+for (const { provider, list } of mediaListByProvider) {
+  const { notInDatabase, onlyInDatabase } = database.mediaDiff(list, provider);
+
+  mediaToAdd = [...mediaToAdd, ...notInDatabase];
+  mediaToDelete = [...mediaToDelete, ...onlyInDatabase];
+}
 
 // If any testing flags are provided, filter the media down
 if (cliArguments.testLessTitles) {
@@ -79,49 +91,65 @@ if (cliArguments.testLessTitles) {
     `[--test-less-titles] providers: ${providers.map((provider) => provider.name).join(", ")} seed: ${seed.toString()}`,
   );
 
-  mediaList = shuffle(mediaList, seed);
+  mediaToAdd = shuffle(mediaToAdd, seed);
   // Take 10% (but at least 1 element)
   const PERCENTAGE = 0.1;
-  mediaList = mediaList.slice(0, Math.max(1, mediaList.length * PERCENTAGE));
+  mediaToAdd = mediaToAdd.slice(0, Math.max(1, mediaToAdd.length * PERCENTAGE));
 } else if (cliArguments.testTitle) {
   const substrings = cliArguments.testTitle;
-  mediaList = mediaList.filter((media) =>
+  mediaToAdd = mediaToAdd.filter((media) =>
     substrings.some((substring) => media.providerTitle.includes(substring)),
   );
   console.log(
-    `[--test-titles] Only checking ${mediaList.map((media) => media.providerTitle).join(", ")}`,
+    `[--test-titles] Only checking ${mediaToAdd.map((media) => media.providerTitle).join(", ")}`,
   );
+}
+
+if (mediaToDelete.length > 0) {
+  logStyleText(
+    "red",
+    `Deleting these media (as they are no longer on the provider):\n${mediaToDelete.map((entry) => `- ${entry.providerTitle} (${entry.provider})`).join("\n")}`,
+  );
+
+  database.deleteMany(mediaToDelete);
 }
 
 // For now, anilist is the only ranker. I've set it up so it's easy to expand this in
 // the future
 
-const ranker = new Anilist();
+if (mediaToAdd.length > 0) {
+  logStyleText(
+    "green",
+    `Adding these media:\n${mediaToAdd.map((entry) => `- ${entry.providerTitle} (${entry.provider})`).join("\n")}`,
+  );
 
-const progressBar = new SingleBar(
-  {
-    format: `{bar} {percentage}% | ETA: {eta_formatted} | {value}/{total} | Currently Searching: {title}`,
-    stopOnComplete: true,
-    clearOnComplete: true,
-    hideCursor: true,
-    gracefulExit: true,
-  },
-  Presets.shades_grey,
-);
-progressBar.start(mediaList.length, 0);
+  const ranker = new Anilist();
 
-for (const media of mediaList) {
-  progressBar.update({ title: media.providerTitle });
-  const rank = await ranker.getRanking(media);
+  const progressBar = new SingleBar(
+    {
+      format: `{bar} {percentage}% | ETA: {eta_formatted} | {value}/{total} | Currently Searching: {title}`,
+      stopOnComplete: true,
+      clearOnComplete: true,
+      hideCursor: true,
+      gracefulExit: true,
+    },
+    Presets.shades_grey,
+  );
+  progressBar.start(mediaToAdd.length, 0);
 
-  progressBar.increment();
+  for (const media of mediaToAdd) {
+    progressBar.update({ title: media.providerTitle });
+    const rank = await ranker.getRanking(media);
 
-  database.insert({
-    ...media,
-    ...rank,
-  });
+    progressBar.increment();
+
+    database.insert({
+      ...media,
+      ...rank,
+    });
+  }
+  console.log(); // newline
 }
-console.log(); // newline
 
 for (const provider of providers) {
   console.log(`On ${provider.name}, you should check out:`);
@@ -138,7 +166,7 @@ for (const provider of providers) {
   const noRank = database.getAll({ rank: false, provider: provider.name });
   if (noRank.length > 0) {
     console.warn(
-      `Anilist couldn't find a ranking for ${noRank.map((t) => t.providerTitle).join(", ")}\n`,
+      `Anilist couldn't find a ranking for:\n${noRank.map((t) => `- ${t.providerTitle}`).join("\n")}\n`,
     );
     if (provider.name === "Netflix") {
       console.warn(
