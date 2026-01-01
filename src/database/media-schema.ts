@@ -7,7 +7,7 @@ import {
 import { type Rank, type Rankers, rankers } from "../rankers/ranker.ts";
 import z from "zod";
 
-const stringToHttpURL = z.codec(z.httpUrl(), z.instanceof(URL), {
+export const stringToHttpURL = z.codec(z.httpUrl(), z.instanceof(URL), {
   decode: (urlString) => new URL(urlString),
   encode: (url) => url.href,
 });

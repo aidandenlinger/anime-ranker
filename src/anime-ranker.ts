@@ -5,6 +5,7 @@ import { ShonenJump, VizManga } from "./providers/viz.ts";
 import { cliInterface, logStyleText } from "./cli-interface.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
+import { Hidive } from "./providers/hidive.ts";
 import { Hulu } from "./providers/hulu.ts";
 import type { MediaPrimaryKey } from "./database/media-schema.ts";
 import process from "node:process";
@@ -63,6 +64,11 @@ async function updateDatabase(
     switch (provider) {
       case "Hulu": {
         providers.push(new Hulu());
+        break;
+      }
+      case "Hidive": {
+        const hidive = await Hidive.init();
+        providers.push(hidive);
         break;
       }
       case "ShonenJump": {

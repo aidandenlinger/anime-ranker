@@ -14,8 +14,8 @@ export const cliInterface = new Command()
     )
       .choices(providers)
       .default(
-        ["Hulu"] satisfies Providers[],
-        "Providers with a small library and no authentication required",
+        ["Hulu", "Hidive"] satisfies Providers[],
+        "Anime providers with a small library and no authentication required",
       ),
   )
   .option(

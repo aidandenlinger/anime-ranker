@@ -24,6 +24,7 @@ Without any arguments, the script will query each provider with a small library 
 #### Anime
 
 - [Hulu]
+- [HIDIVE]
 - [Netflix] ([requires authorization](./docs/NETFLIX.md))
 
 #### Manga
@@ -63,3 +64,4 @@ MIT
 [Netflix]: https://netflix.com
 [ShonenJump]: https://www.viz.com/manga-books/shonenjump/section/free-chapters
 [VizManga]: https://www.viz.com/manga-books/vizmanga/section/free-chapters
+[HIDIVE]: https://www.hidive.com
