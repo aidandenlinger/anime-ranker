@@ -195,12 +195,10 @@ async function updateDatabase(
         ...rank,
       });
     }
-    console.log(); // newline
+    console.log(
+      `\nWrote all results (including those below ${SCORE_THRESHOLD.toString()}) to ${database.path}`,
+    );
   }
-
-  console.log(
-    `Wrote all results (including those below ${SCORE_THRESHOLD.toString()}) to ${database.path}`,
-  );
 }
 
 /**
