@@ -92,6 +92,11 @@ suite("Database testing", () => {
       database.insert(undefinedScore);
     });
 
+    // We can delete media that has a colon in its title
+    // (was a problem because I use colons as a separator during deletion)
+    database.insert(hasColonInTitle);
+    database.delete(hasColonInTitle);
+
     // We can't add a show without an existing ranking
     t.assert.throws(() => {
       database.insert(pointingToInvalidRank);
@@ -322,6 +327,27 @@ const rank82StartsWithS = {
   genres: [],
   description: undefined,
   startDate: undefined,
+};
+
+const hasColonInTitle: ScoredMedia = {
+  providerTitle: "Pokemon: Arceus and The Jewel of Life",
+  providerURL: new URL(
+    "https://hulu.com/movie/pokemon-arceus-and-the-jewel-of-life-bd26295f-ed1b-4673-8308-ed51bd0d4d7f",
+  ),
+  type: "MOVIE",
+  provider: "Hulu",
+  score: 68,
+  rankerTitle: "Pokémon: Arceus and the Jewel of Life",
+  rankerURL: new URL("https://anilist.co/anime/6178"),
+  ranker: "Anilist",
+  lastUpdated: new Date("2025-11-07T18:14:15.495Z"),
+  rankId: "Anilist:6178",
+  poster: new URL(
+    "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b6178-QtPWVxYMR2V5.png",
+  ),
+  genres: ["Action", "Adventure", "Comedy", "Fantasy"],
+  description: undefined,
+  startDate: new Date("2009-07-18T07:00:00.000"),
 };
 
 const rank79StartsWithO: ScoredMedia = {

@@ -161,7 +161,7 @@ export class Database {
 
     if (insertResults.changes === 0) {
       throw new Error(
-        `${media.provider} ${media.providerTitle} does not appear to be in the table and cannot be deleted.`,
+        `${media.providerTitle} (${media.provider}) does not appear to be in the table and cannot be deleted.`,
       );
     }
 
@@ -408,7 +408,10 @@ export class Database {
     const onlyInDatabase = [
       ...titlesInDatabase.difference(titlesInRequestSet),
     ].map((key) => {
-      const [rawProvider, providerTitle] = key.split(":");
+      // Splits on all occurances of ":"
+      const [rawProvider, ...rest] = key.split(":");
+      // Rejoin with ":", in case title has a ":"
+      const providerTitle = rest.join(":");
       const databaseProvider = z.enum(providers).parse(rawProvider);
       assert.ok(provider === undefined || databaseProvider === provider);
       assert.ok(providerTitle);
