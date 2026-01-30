@@ -24,7 +24,6 @@ export default defineConfig(
   tseslint.configs.stylisticTypeChecked,
   pluginUnicorn.configs.recommended,
   pluginNode.configs["flat/recommended"],
-  // @ts-expect-error -- https://github.com/eslint-community/eslint-plugin-eslint-comments/pull/246 will add a proper declaration file
   pluginEslintComments.recommended,
   jsdoc({
     config: "flat/recommended-typescript-error",

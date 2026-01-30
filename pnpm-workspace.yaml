@@ -10,3 +10,9 @@ minimumReleaseAge: 1440
 # by a trusted publisher but now only has provenance or no trust evidence). This helps you avoid
 # installing potentially compromised or less trustworthy versions.
 trustPolicy: no-downgrade
+
+# When set to true, only direct dependencies (those listed in your root
+# package.json) may use exotic sources (like git repositories or direct tarball
+# URLs). This setting helps secure the dependency supply chain by preventing
+# transitive dependencies from pulling in code from untrusted locations.
+blockExoticSubdeps: true
