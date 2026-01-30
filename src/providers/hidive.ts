@@ -18,6 +18,9 @@ export class Hidive implements Provider {
   readonly #environment: EnvironmentConfiguration;
   /** Our HIDIVE session tokens */
   readonly #session: Session;
+  /** The realm the Hidive session token belongs to */
+  // Typically dce.hidive, but not hardcoding in case it changes
+  readonly #realm: string;
   /** The HTTP API endpoint for HIDIVE */
   // Typically https://dce-frontoffice.imggaming.com, but not hardcoding that in case it changes
   readonly api: URL;
@@ -82,7 +85,16 @@ export class Hidive implements Provider {
 
     const session = sessionSchema.parse(await sessionResp.json());
 
-    return new Hidive(environment, session);
+    const [_header, payload] = session.authorisationToken.split(".");
+    if (!payload) {
+      throw new Error("JWT did not contain a period separator");
+    }
+
+    const realm = jwtPayload.parse(
+      JSON.parse(Buffer.from(payload, "base64").toString("utf8")),
+    ).aud[0];
+
+    return new Hidive(environment, session, realm);
   }
 
   /**
@@ -90,10 +102,16 @@ export class Hidive implements Provider {
    * synchronous step to save the variables retrieved in init and create the provider.
    * @param environment The URLs to access for the HIDIVE API
    * @param session Session tokens to make API requests with
+   * @param realm The realm the session applies to
    */
-  private constructor(environment: EnvironmentConfiguration, session: Session) {
+  private constructor(
+    environment: EnvironmentConfiguration,
+    session: Session,
+    realm: string,
+  ) {
     this.#environment = environment;
     this.#session = session;
+    this.#realm = realm;
     this.api = environment.httpapi;
   }
 
@@ -224,7 +242,7 @@ export class Hidive implements Provider {
         /* eslint-disable @typescript-eslint/naming-convention -- HTTP headers can't be camelcase */
         headers: new Headers({
           "x-api-key": this.#environment.API_KEY,
-          Realm: "dce.hidive",
+          Realm: this.#realm,
           Authorization: `Bearer ${this.#session.authorisationToken}`,
         }),
         /* eslint-enable @typescript-eslint/naming-convention -- done with HTTP headers */
@@ -314,3 +332,8 @@ const environmentConfigurationSchema = z.object({
   VERSION: z.string(),
 });
 /* eslint-enable @typescript-eslint/naming-convention -- Reenabling after HIDIVE conf block */
+
+/** Hidive's JWT payload. Only extracting the audience, because that's the only thing we care about here. */
+const jwtPayload = z.object({
+  aud: z.tuple([z.string()]),
+});
