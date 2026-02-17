@@ -26,6 +26,7 @@ Without any arguments, the script will query each provider with a small anime li
 - [Hulu]
 - [HIDIVE]
 - [Netflix] ([requires authorization](./docs/NETFLIX.md))
+- [Amazon Prime] ([list is not automatically updated, must be updated manually](./docs/AMAZON_PRIME.md))
 
 #### Manga
 

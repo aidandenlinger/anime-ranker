@@ -233,6 +233,17 @@ export class Anilist implements Ranker {
         / \((?:Spanish|Eng|Eng Dub|English Dub|Dub|en Español)\)$/,
         "",
       );
+    } else if (provider === "AmazonPrime") {
+      title = title.replace(/(?::| -)? Season (?:1|02)/, "");
+      title = title.replace(/- S01/, "");
+      title = title.replace(/\[English-Language Version\]/, "");
+      title = title.replace(/- The Complete Series/, "");
+      title = title.replace(
+        /\((Japanese Language with English Subtitles|Japanese with English Subs|Original Japanese|English Dubbed|English|Subbed)\)/,
+        "",
+      );
+      title = title.replace(/\[English-Language Version\]/, "");
+      title = title.replace(/- (S01|Season 1)/, "");
     }
 
     return title;

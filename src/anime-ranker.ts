@@ -3,6 +3,7 @@ import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
 import { ShonenJump, VizManga } from "./providers/viz.ts";
 import { cliInterface, logStyleText } from "./cli-interface.ts";
+import { AmazonPrime } from "./providers/amazon.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
 import { Hidive } from "./providers/hidive.ts";
@@ -69,6 +70,10 @@ async function updateDatabase(
       case "Hidive": {
         const hidive = await Hidive.init();
         providers.push(hidive);
+        break;
+      }
+      case "AmazonPrime": {
+        providers.push(new AmazonPrime());
         break;
       }
       case "ShonenJump": {

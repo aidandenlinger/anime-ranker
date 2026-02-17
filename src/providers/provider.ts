@@ -4,6 +4,7 @@
 export const providers = [
   "Hulu",
   "Netflix",
+  "AmazonPrime",
   "Hidive",
   "ShonenJump",
   "VizManga",
