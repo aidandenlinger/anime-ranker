@@ -5,18 +5,18 @@
     "ci": "tsc && node --test && eslint && prettier --check ."
   },
   "devDependencies": {
-    "@eslint-community/eslint-plugin-eslint-comments": "^4.6.0",
-    "@eslint/js": "^9.39.2",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.7.1",
+    "@eslint/js": "^10.0.1",
     "@types/cli-progress": "3.11.6",
     "@types/knuth-shuffle-seeded": "1.0.2",
-    "@types/node": "^24.10.9",
-    "eslint": "^9.39.2",
-    "eslint-plugin-jsdoc": "^62.4.1",
-    "eslint-plugin-n": "^17.23.2",
-    "eslint-plugin-unicorn": "^62.0.0",
+    "@types/node": "^24.12.0",
+    "eslint": "^10.0.3",
+    "eslint-plugin-jsdoc": "^62.7.1",
+    "eslint-plugin-n": "^17.24.0",
+    "eslint-plugin-unicorn": "^63.0.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.57.0"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
