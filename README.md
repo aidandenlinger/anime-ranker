@@ -4,7 +4,7 @@ Given a supported streaming service, returns a sorted list of all the anime (or 
 
 ## Install
 
-This project uses [`pnpm`] and [`node`]. The specific versions used are tracked in [`mise.toml`](./mise.toml). You can automatically install these tools with [`mise`], or manually install the tools yourself.
+This project uses [`pnpm`] and [`node`]. The specific versions used are tracked in [`flake.nix`](./flake.nix). You can automatically install these tools with [`nix`], or manually install the tools yourself.
 
 ## Usage
 
@@ -83,7 +83,7 @@ MIT
 [AniList]: https://anilist.co
 [`pnpm`]: https://pnpm.io/
 [`node`]: https://nodejs.org/en
-[`mise`]: https://mise.jdx.dev/
+[`nix`]: https://nixos.org/
 [`sqlite3`]: https://sqlite.org/
 [WSL]: https://learn.microsoft.com/en-us/windows/wsl/install
 [rate limit]: https://docs.anilist.co/guide/rate-limiting
