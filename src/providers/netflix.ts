@@ -1,3 +1,4 @@
+/** CURRENTLY BROKEN as the endpoint has changed */
 import type { Media, Provider } from "./provider.ts";
 import pThrottle from "p-throttle";
 import z from "zod";
@@ -46,6 +47,8 @@ export class Netflix implements Provider {
     interval: 1000, // one request per second. This is an arbitrary, friendly value.
   })(async (page: number) => {
     const parameters = new URLSearchParams({
+      // FIXME: This has changed since the last time I ran the script
+      /* eslint-disable @typescript-eslint/naming-convention -- I don't control Netflix parameter names */
       path: JSON.stringify([
         "genres",
         this.#animeGenreCode,
@@ -57,6 +60,8 @@ export class Netflix implements Provider {
         // I tried replacing this to only get the title or id, but no luck.
         "itemSummary",
       ]),
+      original_path: "%2Fshakti%2Fmre%2FpathEvaluator",
+      /* eslint-enable @typescript-eslint/naming-convention -- Netflix parameter names done */
     });
 
     return fetch(this.api, {
@@ -129,7 +134,9 @@ export class Netflix implements Provider {
 
   // great Netflix API resource - https://github.com/oldgalileo/shakti
   /** A Netflix API to query for titles. */
-  readonly api = new URL("https://www.netflix.com/shakti/mre/pathEvaluator");
+  readonly api = new URL(
+    "https://www.netflix.com/nq/website/memberapi/release/pathEvaluator",
+  );
 
   /**
    * @param cookies the `SecureNetflixId` and `NetflixId` cookies required to

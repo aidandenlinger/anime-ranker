@@ -25,7 +25,6 @@ Without any arguments, the script will query each provider with a small anime li
 
 - [Hulu]
 - [HIDIVE]
-- [Netflix] ([requires authorization](./docs/NETFLIX.md))
 - [Amazon Prime] ([list is not automatically updated, must be updated manually](./docs/AMAZON_PRIME.md))
 
 #### Manga
@@ -34,6 +33,8 @@ Without any arguments, the script will query each provider with a small anime li
 - [VizManga]
 
 ### Known Issues
+
+- [Netflix] ([requires authorization](./docs/NETFLIX.md)) is **currently broken** as they've changed their endpoint
 
 - Right now, the script simply prints out the shows you should watch. The real value is
   exploring the database at `database.sqlite` yourself. See [`database.ts`] for examples
