@@ -4,13 +4,13 @@ import {
   type MaybeRankedMedia,
   type MediaPrimaryKey,
   type ScoredMedia,
-  createDeletedTable,
-  createMediaTable,
-  createRanksTable,
   maybeRankedMediaSchema,
   mediaAndRankIdSchema,
   mediaPrimaryKeySchema,
   rankSchema,
+  sqlCreateDeletedTableQuery,
+  sqlCreateMediaTableQuery,
+  sqlCreateRanksTableQuery,
 } from "./media-schema.ts";
 import {
   type Media,
@@ -26,15 +26,15 @@ import z from "zod";
  * Class to add and list entries from a database. Use explicit resource management or close it when you're done.
  */
 export class Database {
-  /** The filepath of this database. */
-  readonly path: string;
-
   /** Our interface to perform SQL queries. */
   readonly #sql: SQLTagStore;
 
   // TODO: follow the outcome of https://github.com/nodejs/node/issues/60448, I may get to delete this
   /** Our SQL database. */
   readonly #db: DatabaseSync;
+
+  /** The filepath of this database. */
+  readonly path: string;
 
   /**
    * @param databasePath A filepath to write a new or load an old database,
@@ -46,9 +46,61 @@ export class Database {
     this.#sql = this.#db.createTagStore();
 
     // NOTE: Ranks must be created first because Media has a `REFERENCES` to Ranks
-    this.#db.exec(createRanksTable);
-    this.#db.exec(createMediaTable);
-    this.#db.exec(createDeletedTable);
+    this.#db.exec(sqlCreateRanksTableQuery);
+    this.#db.exec(sqlCreateMediaTableQuery);
+    this.#db.exec(sqlCreateDeletedTableQuery);
+  }
+
+  /** @returns all titlesin the database via an identifier string, for use with a set */
+  #titles(): ReadonlySet<`${Providers}:${string}`>;
+
+  /**
+   * @param provider Optional provider to filter the results to
+   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
+   */
+  #titles<Provider extends Providers>(
+    provider?: Provider,
+  ): ReadonlySet<`${Provider}:${string}`>;
+
+  /**
+   * @param provider Optional provider to filter the results to
+   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
+   */
+  #titles(provider?: Providers) {
+    return new Set(
+      match(provider satisfies Providers | undefined)
+        .with(
+          P.nonNullable,
+          (provider) =>
+            this.#sql.all`
+              SELECT
+                  "provider",
+                  "providerTitle"
+              FROM Media
+              WHERE
+                  "provider" = ${provider}
+              ORDER BY "providerTitle" ASC, "provider" ASC`,
+        )
+        .otherwise(
+          () =>
+            this.#sql.all`
+              SELECT
+                  "provider",
+                  "providerTitle"
+              FROM Media
+              ORDER BY "providerTitle" ASC, "provider" ASC
+          `,
+        )
+        .map((result) => mediaPrimaryKeySchema.parse(result))
+        .map((entry) => {
+          if (provider === undefined) {
+            return `${entry.provider}:${entry.providerTitle}` as const;
+          }
+
+          assert.ok(entry.provider === provider);
+          return `${provider}:${entry.providerTitle}` as const;
+        }),
+    );
   }
 
   /**
@@ -108,7 +160,11 @@ export class Database {
     }
 
     const { providerTitle, type, providerURL, provider, rankId } =
-      mediaAndRankIdSchema.encode(entry);
+      mediaAndRankIdSchema.encode({
+        // Make sure the rankId field exists
+        rankId: undefined,
+        ...entry,
+      });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- we don't care to learn about the resulting changes here
     this.#sql.run`
@@ -426,58 +482,6 @@ export class Database {
     };
   }
 
-  /** @returns all titlesin the database via an identifier string, for use with a set */
-  #titles(): ReadonlySet<`${Providers}:${string}`>;
-
-  /**
-   * @param provider Optional provider to filter the results to
-   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
-   */
-  #titles<Provider extends Providers>(
-    provider?: Provider,
-  ): ReadonlySet<`${Provider}:${string}`>;
-
-  /**
-   * @param provider Optional provider to filter the results to
-   * @returns all titles in the database with a certain provider via an identifier string, for use with a set
-   */
-  #titles(provider?: Providers) {
-    return new Set(
-      match(provider satisfies Providers | undefined)
-        .with(
-          P.nonNullable,
-          (provider) =>
-            this.#sql.all`
-              SELECT
-                  "provider",
-                  "providerTitle"
-              FROM Media
-              WHERE
-                  "provider" = ${provider}
-              ORDER BY "providerTitle" ASC, "provider" ASC`,
-        )
-        .otherwise(
-          () =>
-            this.#sql.all`
-              SELECT
-                  "provider",
-                  "providerTitle"
-              FROM Media
-              ORDER BY "providerTitle" ASC, "provider" ASC
-          `,
-        )
-        .map((result) => mediaPrimaryKeySchema.parse(result))
-        .map((entry) => {
-          if (provider === undefined) {
-            return `${entry.provider}:${entry.providerTitle}` as const;
-          }
-
-          assert.ok(entry.provider === provider);
-          return `${provider}:${entry.providerTitle}` as const;
-        }),
-    );
-  }
-
   /**
    * NOTE: You could avoid calling this function manually
    * by using explicit resource management instead:
@@ -498,6 +502,7 @@ export class Database {
   /**
    * Closes the connection to the database when done.
    */
+  // eslint-disable-next-line unicorn/no-nonstandard-builtin-properties -- not sure why it's flagging dispose
   [Symbol.dispose]() {
     this.close();
   }

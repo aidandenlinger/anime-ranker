@@ -6,6 +6,38 @@ import z from "zod";
  * Gets a list of all anime under {@link https://hulu.com|Hulu's} anime sitemap.
  */
 export class Hulu implements Provider {
+  /**
+   * A parsed version of Hulu's site data.
+   */
+  readonly #huluParsedSchema = z
+    .object({
+      title: z.string(),
+      href: validHuluHref,
+    })
+    .transform(({ title, href }) => {
+      let type: Media["type"];
+      if (isHrefPrefix("/movie", href)) {
+        type = "MOVIE";
+      } else if (isHrefPrefix("/series", href)) {
+        type = "TV";
+      } else {
+        // If I ever add another validHuluUrl type, this will fail compilation :)
+        type = href satisfies never;
+      }
+
+      const providerURL = new URL(href, "https://hulu.com");
+      // We don't need the referrer
+      providerURL.searchParams.delete("lp_referrer");
+
+      return {
+        providerTitle: title,
+        providerURL: providerURL,
+        type,
+        provider: this.name,
+      };
+    })
+    .readonly();
+
   /** Human-readable identifier for the provider */
   readonly name = "Hulu" as const;
 
@@ -42,7 +74,7 @@ export class Hulu implements Provider {
       .map((_, element) => {
         const selector = $(element).children().first();
 
-        return this.#huluParsed.parse({
+        return this.#huluParsedSchema.parse({
           title: selector.attr("title"),
           href: selector.attr("href"),
         });
@@ -51,38 +83,6 @@ export class Hulu implements Provider {
 
     return titles;
   }
-
-  /**
-   * A parsed version of Hulu's site data.
-   */
-  readonly #huluParsed = z
-    .object({
-      title: z.string(),
-      href: validHuluHref,
-    })
-    .transform(({ title, href }) => {
-      let type: Media["type"];
-      if (hrefIs("/movie", href)) {
-        type = "MOVIE";
-      } else if (hrefIs("/series", href)) {
-        type = "TV";
-      } else {
-        // If I ever add another validHuluUrl type, this will fail compilation :)
-        type = href satisfies never;
-      }
-
-      const providerURL = new URL(href, "https://hulu.com");
-      // We don't need the referrer
-      providerURL.searchParams.delete("lp_referrer");
-
-      return {
-        providerTitle: title,
-        providerURL: providerURL,
-        type,
-        provider: this.name,
-      };
-    })
-    .readonly();
 }
 
 // Some URL utilities. I need to define types outside of the class, so it felt
@@ -105,7 +105,7 @@ const validHuluHref = z
  * @param href The href to check the prefix on
  * @returns if href starts with prefix, with a type assertion
  */
-function hrefIs<Prefix extends ValidHrefPrefix>(
+function isHrefPrefix<Prefix extends ValidHrefPrefix>(
   prefix: Prefix,
   href: string,
 ): href is `${Prefix}${string}` {

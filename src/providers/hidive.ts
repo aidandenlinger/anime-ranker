@@ -12,19 +12,6 @@ const HIDIVE_URL = "https://www.hidive.com";
  * Gets a list of all anime under {@link https://www.hidive.com/browse|HIDIVE's} catalog.
  */
 export class Hidive implements Provider {
-  /** Human-readable name for HIDIVE */
-  readonly name = "Hidive" as const;
-  /** HIDIVE's full environment setup for prod, extracted from their main JS file */
-  readonly #environment: EnvironmentConfiguration;
-  /** Our HIDIVE session tokens */
-  readonly #session: Session;
-  /** The realm the Hidive session token belongs to */
-  // Typically dce.hidive, but not hardcoding in case it changes
-  readonly #realm: string;
-  /** The HTTP API endpoint for HIDIVE */
-  // Typically https://dce-frontoffice.imggaming.com, but not hardcoding that in case it changes
-  readonly api: URL;
-
   /**
    * Initalize a HIDIVE provider. This is effectively the constructor
    * since getting the environment configuration requires async fetches.
@@ -40,10 +27,9 @@ export class Hidive implements Provider {
 
     // We're looking for the latest url to `/code/js/app.HASH.js`. The HASH can change when updated.
     // This Javascript file contains information on the environment.
-    const pathToAppScript = $("script")
-      .toArray()
-      .map((element) => element.attribs["src"])
-      .find((path) => path !== undefined && /code\/js\/app\..*\.js/.test(path));
+    const pathToAppScript = $('script[src*="code/js/app."][src$=".js"]').attr(
+      "src",
+    );
 
     if (!pathToAppScript) {
       throw new Error(`Could not find path to ${this.name} main script`);
@@ -65,7 +51,7 @@ export class Hidive implements Provider {
 
     // I'm extracting an object from JavaScript code, it isn't a proper JSON object. The keys are not quoted.
     // Using a JSON5 parser safely handles this.
-    const environment = environmentConfigurationSchema.parse(
+    const environment = environmentConfigSchema.parse(
       JSON5.parse(environmentJSON[1]),
     );
 
@@ -91,11 +77,49 @@ export class Hidive implements Provider {
     }
 
     const realm = jwtPayload.parse(
+      // eslint-disable-next-line unicorn/prefer-uint8array-base64 -- i'm on node 24, fromBase64 isn't here yet
       JSON.parse(Buffer.from(payload, "base64").toString("utf8")),
     ).aud[0];
 
     return new Hidive(environment, session, realm);
   }
+
+  /** HIDIVE's full environment setup for prod, extracted from their main JS file */
+  readonly #environment: EnvironmentConfig;
+  /** Our HIDIVE session tokens */
+  readonly #session: Session;
+  /** The realm the Hidive session token belongs to */
+  // Typically dce.hidive, but not hardcoding in case it changes
+  readonly #realm: string;
+  /**
+   * Make requests to the HIDIVE api. Rate limited to 2 requests per second.
+   * I made this limit up myself and it may not be necessary, but I want to be
+   * a good citizen and that's fast enough for me.
+   * @param URL the URL to query
+   */
+  readonly #throttledRequest = pThrottle({
+    // Only ever have one outgoing request
+    limit: 1,
+    // Arbitrary rate limit of .5 seconds between each request to not get rate limited
+    interval: 500,
+  })(
+    async (url: URL) =>
+      await fetch(url, {
+        /* eslint-disable @typescript-eslint/naming-convention -- HTTP headers can't be camelcase */
+        headers: new Headers({
+          "x-api-key": this.#environment.API_KEY,
+          Realm: this.#realm,
+          Authorization: `Bearer ${this.#session.authorisationToken}`,
+        }),
+        /* eslint-enable @typescript-eslint/naming-convention -- done with HTTP headers */
+      }),
+  );
+
+  /** Human-readable name for HIDIVE */
+  readonly name = "Hidive" as const;
+  /** The HTTP API endpoint for HIDIVE */
+  // Typically https://dce-frontoffice.imggaming.com, but not hardcoding that in case it changes
+  readonly api: URL;
 
   /**
    * Use {@link init} to create a HIDIVE provider. This is the final
@@ -105,7 +129,7 @@ export class Hidive implements Provider {
    * @param realm The realm the session applies to
    */
   private constructor(
-    environment: EnvironmentConfiguration,
+    environment: EnvironmentConfig,
     session: Session,
     realm: string,
   ) {
@@ -113,6 +137,56 @@ export class Hidive implements Provider {
     this.#session = session;
     this.#realm = realm;
     this.api = environment.httpapi;
+  }
+
+  /**
+   * Each HIDIVE section holds several buckets. This endpoint will retrieve
+   * 10 buckets with 12 entries per bucket, like their webapp does. There is
+   * one bucket per letter of the alphabet.
+   * @param section Which section to fetch from
+   * @param lastSeen The value of `paging.lastSeen`, will get the next buckets
+   * @returns the requested buckets and pagination status
+   */
+  async #getContent(section: "TV" | "MOVIE", lastSeen?: string) {
+    const url = new URL(`/api/v4/content/${contentName[section]}`, this.api);
+    // Get at maximum 10 buckets per request (one bucket for each letter of the alphabet), matching webapp behavior
+    url.searchParams.append("bpp", "10");
+    // Get at maximum 12 shows per bucket, matching webapp behavior
+    url.searchParams.append("rpp", "12");
+    if (lastSeen) {
+      url.searchParams.append("lastSeen", lastSeen);
+    }
+
+    const request = await this.#throttledRequest(url);
+    const json = await request.json();
+    return contentSchema.parse(json);
+  }
+
+  /**
+   * When you request content, we get 12 entries per bucket. If there are more
+   * entries, use this to fetch the next 10 entries.
+   * @param section The section the bucket is in
+   * @param exid The ID for the bucket you want to get entries for
+   * @param lastSeen Use `paging.lastSeen` to get more pagination
+   * @returns The next 10 entries in the bucket
+   */
+  async #getBucketNextPage(
+    section: "TV" | "MOVIE",
+    exid: string,
+    lastSeen: string,
+  ) {
+    const url = new URL(
+      `/api/v4/content/${contentName[section]}/bucket/${exid}`,
+      this.api,
+    );
+    // Fetch 10 more shows for this bucket, matching webapp behavior
+    url.searchParams.append("rpp", "10");
+    // Fetching from last seen
+    url.searchParams.append("lastSeen", lastSeen);
+
+    const request = await this.#throttledRequest(url);
+    const json = await request.json();
+    return bucketSchema.parse(json);
   }
 
   /** @returns A list of all anime on HIDIVE. */
@@ -149,105 +223,36 @@ export class Hidive implements Provider {
             contentList = [...contentList, ...bucket.contentList];
           }
 
-          for (const content of contentList) {
-            if (media.get(content.title) === undefined) {
-              const animeTypePrefix = match(animeType)
-                .with("TV", () => "season")
-                .with("MOVIE", () => "playlist")
-                .exhaustive();
-
-              media.set(content.title, {
-                provider: "Hidive",
-                providerTitle: content.title,
-                type: animeType,
-                providerURL: new URL(
-                  `/${animeTypePrefix}/${content.id.toString()}`,
-                  HIDIVE_URL,
-                ),
-              });
+          const addContent = (content: (typeof contentList)[number]) => {
+            if (media.has(content.title)) {
+              return;
             }
+
+            const animeTypePrefix = match(animeType)
+              .with("TV", () => "season")
+              .with("MOVIE", () => "playlist")
+              .exhaustive();
+
+            media.set(content.title, {
+              provider: "Hidive",
+              providerTitle: content.title,
+              type: animeType,
+              providerURL: new URL(
+                `/${animeTypePrefix}/${content.id.toString()}`,
+                HIDIVE_URL,
+              ),
+            });
+          };
+
+          for (const content of contentList) {
+            addContent(content);
           }
         }
       } while (content.paging.moreDataAvailable);
     }
 
-    return [...media.values()];
+    return media.values().toArray();
   }
-
-  /**
-   * Each HIDIVE section holds several buckets. This endpoint will retrieve
-   * 10 buckets with 12 entries per bucket, like their webapp does. There is
-   * one bucket per letter of the alphabet.
-   * @param section Which section to fetch from
-   * @param lastSeen The value of `paging.lastSeen`, will get the next buckets
-   * @returns the requested buckets and pagination status
-   */
-  readonly #getContent = async (section: "TV" | "MOVIE", lastSeen?: string) => {
-    const url = new URL(`/api/v4/content/${contentName[section]}`, this.api);
-    // Get at maximum 10 buckets per request (one bucket for each letter of the alphabet), matching webapp behavior
-    url.searchParams.append("bpp", "10");
-    // Get at maximum 12 shows per bucket, matching webapp behavior
-    url.searchParams.append("rpp", "12");
-    if (lastSeen) {
-      url.searchParams.append("lastSeen", lastSeen);
-    }
-
-    const request = await this.#throttledRequest(url);
-    const json = await request.json();
-    return contentSchema.parse(json);
-  };
-
-  /**
-   * When you request content, we get 12 entries per bucket. If there are more
-   * entries, use this to fetch the next 10 entries.
-   * @param section The section the bucket is in
-   * @param exid The ID for the bucket you want to get entries for
-   * @param lastSeen Use `paging.lastSeen` to get more pagination
-   * @returns The next 10 entries in the bucket
-   */
-  readonly #getBucketNextPage = async (
-    section: "TV" | "MOVIE",
-    exid: string,
-    lastSeen: string,
-  ) => {
-    const url = new URL(
-      `/api/v4/content/${contentName[section]}/bucket/${exid}`,
-      this.api,
-    );
-    // Fetch 10 more shows for this bucket, matching webapp behavior
-    url.searchParams.append("rpp", "10");
-    // Fetching from last seen
-    url.searchParams.append("lastSeen", lastSeen);
-
-    const request = await this.#throttledRequest(url);
-    const json = await request.json();
-    return bucketSchema.parse(json);
-  };
-
-  /**
-   * Make requests to the HIDIVE api. Rate limited to 2 requests per second.
-   * I made this limit up myself and it may not be necessary, but I want to be
-   * a good citizen and that's fast enough for me.
-   * @param URL the URL to query
-   */
-  readonly #throttledRequest = pThrottle({
-    // Only ever have one outgoing request
-    limit: 1,
-    // Arbitrary rate limit of .5 seconds between each request to not get rate limited
-    interval: 500,
-  })(
-    /* eslint-disable-next-line unicorn/consistent-function-scoping -- we never want to make unthrottled requests, so this arrow function must be defined within the throttle */
-    async (url: URL) =>
-      await fetch(url, {
-        /* eslint-disable @typescript-eslint/naming-convention -- HTTP headers can't be camelcase */
-        headers: new Headers({
-          "x-api-key": this.#environment.API_KEY,
-          Realm: this.#realm,
-          Authorization: `Bearer ${this.#session.authorisationToken}`,
-        }),
-        /* eslint-enable @typescript-eslint/naming-convention -- done with HTTP headers */
-      }),
-  );
 }
 
 /* eslint-disable @typescript-eslint/naming-convention -- already standardized on using all caps for these content types */
@@ -264,6 +269,7 @@ const pagingSchema = z.union([
   z.object({ moreDataAvailable: z.literal(false) }),
 ]);
 
+/* eslint-disable unicorn/max-nested-calls -- large zod schema */
 const bucketSchema = z.object({
   name: z.string(),
   exid: z.string(),
@@ -287,6 +293,7 @@ const bucketSchema = z.object({
       })),
   ),
 });
+/* eslint-enable unicorn/max-nested-calls -- large zod schema over */
 
 const contentSchema = z.object({
   paging: pagingSchema,
@@ -306,10 +313,10 @@ const sessionSchema = z
   .transform((init) => init.authentication);
 
 /** HIDIVE's object to describe their production environment */
-type EnvironmentConfiguration = z.infer<typeof environmentConfigurationSchema>;
+type EnvironmentConfig = z.infer<typeof environmentConfigSchema>;
 
 /* eslint-disable @typescript-eslint/naming-convention -- this is HIDIVE's schema, I don't control the variable names here */
-const environmentConfigurationSchema = z.object({
+const environmentConfigSchema = z.object({
   env: z.literal("PROD"),
   httpapi: stringToHttpURL,
   beaconapi: stringToHttpURL,

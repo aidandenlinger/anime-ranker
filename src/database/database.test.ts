@@ -94,8 +94,8 @@ suite("Database testing", () => {
 
     // We can delete media that has a colon in its title
     // (was a problem because I use colons as a separator during deletion)
-    database.insert(hasColonInTitle);
-    database.delete(hasColonInTitle);
+    database.insert(colonInTitle);
+    database.delete(colonInTitle);
 
     // We can't add a show without an existing ranking
     t.assert.throws(() => {
@@ -329,7 +329,7 @@ const rank82StartsWithS = {
   startDate: undefined,
 };
 
-const hasColonInTitle: ScoredMedia = {
+const colonInTitle: ScoredMedia = {
   providerTitle: "Pokemon: Arceus and The Jewel of Life",
   providerURL: new URL(
     "https://hulu.com/movie/pokemon-arceus-and-the-jewel-of-life-bd26295f-ed1b-4673-8308-ed51bd0d4d7f",

@@ -3,7 +3,7 @@ import { Netflix, netflixCookiesSchema } from "./providers/netflix.ts";
 import { Presets, SingleBar } from "cli-progress";
 import { ShonenJump, VizManga } from "./providers/viz.ts";
 import { cliInterface, logStyleText } from "./cli-interface.ts";
-import { AmazonPrime } from "./providers/amazon.ts";
+import { AmazonPrime } from "./providers/amazon/amazon.ts";
 import { Anilist } from "./rankers/anilist.ts";
 import { Database } from "./database/database.ts";
 import { Hidive } from "./providers/hidive.ts";
@@ -61,7 +61,7 @@ async function updateDatabase(
 ) {
   const providers: Provider[] = [];
 
-  for (const provider of providerStrings) {
+  const addProvider = async (provider: Providers) => {
     switch (provider) {
       case "Hulu": {
         providers.push(new Hulu());
@@ -97,25 +97,28 @@ async function updateDatabase(
         }
       }
     }
+  };
+
+  for (const provider of providerStrings) {
+    await addProvider(provider);
   }
 
   console.log("Fetching media list...");
   const mediaFetch = await Promise.allSettled(
-    providers.map((provider) =>
-      provider.getMedia().then((list) => ({ provider: provider.name, list })),
-    ),
+    providers.map(async (provider) => {
+      const list = await provider.getMedia();
+
+      return { provider: provider.name, list };
+    }),
   );
 
-  for (const failedPromise of mediaFetch.filter(
-    (result) => result.status === "rejected",
-  )) {
-    if (failedPromise.reason instanceof Error) {
-      console.warn(failedPromise.reason.message);
-    } else {
-      console.warn(
-        "Fetching media for a provider failed",
-        failedPromise.reason,
-      );
+  for (const result of mediaFetch) {
+    if (result.status === "rejected") {
+      if (result.reason instanceof Error) {
+        console.warn(result.reason.message);
+      } else {
+        console.warn("Fetching media for a provider failed", result.reason);
+      }
     }
   }
 
@@ -185,7 +188,8 @@ async function updateDatabase(
 
     const progressBar = new SingleBar(
       {
-        format: `{bar} {percentage}% | ETA: {eta_formatted} | {value}/{total} | Currently Searching: {title}`,
+        format:
+          "{bar} {percentage}% | ETA: {eta_formatted} | {value}/{total} | Currently Searching: {title}",
         stopOnComplete: true,
         clearOnComplete: true,
         hideCursor: true,
@@ -220,10 +224,13 @@ async function updateDatabase(
 function printRecommendedMedia(database: Database, providers: Providers[]) {
   for (const provider of providers) {
     console.log(`On ${provider}, you should check out:`);
-    for (const media of database.getAll({
+
+    const recommendedMedia = database.getAll({
       rank: { minimumScore: SCORE_THRESHOLD },
       provider: provider,
-    })) {
+    });
+
+    for (const media of recommendedMedia) {
       console.log(
         `- ${media.providerTitle}${media.startDate ? ` (${media.startDate.getFullYear().toString()})` : ""} - ${media.score.toString()}`,
       );

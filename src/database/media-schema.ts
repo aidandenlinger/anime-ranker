@@ -95,9 +95,9 @@ export const rankSchema = z.object({
   description: nullableStringToUndefined,
 }) satisfies z.ZodType<Rank>;
 
-export const mediaAndRankIdSchema = mediaSchema.and(
-  z.object({ rankId: nullableRankIdToUndefined }),
-);
+export const mediaAndRankIdSchema = mediaSchema.extend({
+  rankId: nullableRankIdToUndefined,
+});
 
 /** Media with a potential rank. */
 export type MaybeRankedMedia<
@@ -105,8 +105,8 @@ export type MaybeRankedMedia<
   Ranker extends Rankers = Rankers,
 > = Readonly<Media<Provider> & ZodPartial<Rank<Ranker>>>;
 
-export const maybeRankedMediaSchema = mediaSchema.and(
-  rankSchema.partial(),
+export const maybeRankedMediaSchema = mediaSchema.extend(
+  rankSchema.partial().shape,
 ) satisfies z.ZodType<MaybeRankedMedia>;
 
 /** Media with a guaranteed score. */
@@ -116,7 +116,7 @@ export type ScoredMedia<
 > = Readonly<Media<Provider> & RequiredProperty<Rank<Ranker>, "score">>;
 
 // WARNING: must be kept in sync with rankSchema + rankIdSchema!
-export const createRanksTable = `
+export const sqlCreateRanksTableQuery = `
 CREATE TABLE IF NOT EXISTS Ranks (
     "rankId" TEXT PRIMARY KEY NOT NULL,
     "rankerTitle" TEXT NOT NULL,
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS Ranks (
 )`;
 
 // WARNING: must be kept in sync with mediaSchema + rankIdSchema!
-export const createMediaTable = `
+export const sqlCreateMediaTableQuery = `
 CREATE TABLE IF NOT EXISTS Media (
     "providerTitle" TEXT NOT NULL,
     "type" TEXT NOT NULL,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS Media (
 )`;
 
 // WARNING: must be kept in sync with mediaSchema + rankIdSchema!
-export const createDeletedTable = `
+export const sqlCreateDeletedTableQuery = `
 CREATE TABLE IF NOT EXISTS Deleted (
     "providerTitle" TEXT NOT NULL,
     "type" TEXT NOT NULL,
