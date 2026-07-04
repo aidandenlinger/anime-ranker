@@ -3,6 +3,9 @@ on: push
 
 permissions: {}
 
+env:
+  NIX_DEV: nix develop --no-update-lock-file .#ci --command
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
         uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
       - name: Install dependencies
-        run: nix develop --command pnpm install
+        run: ${{ env.NIX_DEV }} pnpm install --frozen-lockfile
 
       - name: Check
-        run: nix develop --command pnpm run ci
+        run: ${{ env.NIX_DEV }} pnpm run ci

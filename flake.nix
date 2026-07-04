@@ -19,25 +19,20 @@
       perSystem =
         { pkgs, ... }:
         let
-          # Disable unwanted hardening flags that can cause unexpected behavor
-          # https://github.com/NixOS/nixpkgs/issues/18995#issuecomment-4061380978
-          mkShellNoHardening =
-            args:
-            pkgs.mkShell (
-              {
-                hardeningDisable = [ "all" ];
-                NIX_ENFORCE_NO_NATIVE = false;
-              }
-              // args
-            );
+          essential = with pkgs; [
+            nodejs_24
+            pnpm_11
+          ];
         in
         {
           devShells = {
-            default = mkShellNoHardening {
-              nativeBuildInputs = with pkgs; [
-                nodejs_24
-                pnpm_10
-              ];
+            default = pkgs.mkShell {
+              packages = essential ++ (with pkgs; [ litecli ]);
+            };
+
+            # Deps neeed for CI
+            ci = pkgs.mkShell {
+              packages = essential;
             };
           };
         };
