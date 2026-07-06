@@ -1,18 +1,13 @@
 # To reduce the risk of installing compromised packages, you can delay the
 # installation of newly published versions. In most cases, malicious releases
-# are discovered and removed from the registry within an hour. The following
-# setting ensures that only packages released at least one day ago can be
-# installed.
-minimumReleaseAge: 1440
+# are discovered and removed from the registry within an hour. Set to three
+# days (unit is in minutes) because I don't need bleeding edge and larger buffer
+# is safer.
+minimumReleaseAge: 4320
 
-# When set to no-downgrade, this setting will prevent installation of a package if its trust
-# level has decreased compared to previous releases (for example, if it was previously published
-# by a trusted publisher but now only has provenance or no trust evidence). This helps you avoid
-# installing potentially compromised or less trustworthy versions.
+# When set to no-downgrade, this setting will prevent installation of a package
+# if its trust level has decreased compared to previous releases (for example,
+# if it was previously published by a trusted publisher but now only has
+# provenance or no trust evidence). This helps you avoid installing potentially
+# compromised or less trustworthy versions.
 trustPolicy: no-downgrade
-
-# When set to true, only direct dependencies (those listed in your root
-# package.json) may use exotic sources (like git repositories or direct tarball
-# URLs). This setting helps secure the dependency supply chain by preventing
-# transitive dependencies from pulling in code from untrusted locations.
-blockExoticSubdeps: true
